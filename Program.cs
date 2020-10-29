@@ -1,17 +1,14 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading.Tasks;
 using System.CommandLine;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-
-
 using System.CommandLine.Hosting;
 using System.CommandLine.Builder;
 using System.CommandLine.Parsing;
-using Microsoft.Extensions.Logging;
 using System.CommandLine.Binding;
 using System.CommandLine.Invocation;
-using System;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using AzureContainerRegistry.CLI.Services;
 
 namespace AzureContainerRegistry.CLI
@@ -19,7 +16,7 @@ namespace AzureContainerRegistry.CLI
     class Program
     {
         static async Task Main(string[] args)
-        {
+        {            
             var cmd = new AcrRootCommand();
             var builder = new CommandLineBuilder(new AcrRootCommand());            
 
@@ -51,8 +48,10 @@ namespace AzureContainerRegistry.CLI
                         var password = context.ParseResult.ValueForOption<string>("passworld");
                         password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ? 
                                         Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
+                       
 
                         services.AddSingleton<Registry>(new Registry(registry, username, password));
+                        services.AddSingleton(typeof(RegistryService));
                     });
                 })
             .UseDefaults()

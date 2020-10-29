@@ -14,7 +14,7 @@ class RepositoryCommand : Command
         var repoListCommand = new Command("list");
         repoListCommand.Handler = CommandHandler.Create<IHost>(host =>
        {
-           var registry = host.Services.GetRequiredService<Registry>();
+           var registry = host.Services.GetRequiredService<RegistryService>();
            Console.WriteLine("Repositories");
            Console.WriteLine("------------");
            return ListRepositoryAsync(registry);
@@ -31,7 +31,7 @@ class RepositoryCommand : Command
         {
             Console.WriteLine("Tags");
             Console.WriteLine("----");
-            var registry = host.Services.GetRequiredService<Registry>();
+            var registry = host.Services.GetRequiredService<RegistryService>();
             return ListTagsAsync(registry, repository);
         });
 
@@ -40,7 +40,7 @@ class RepositoryCommand : Command
         this.Add(tagListCommand);
     }
 
-    static async Task<int> ListRepositoryAsync(Registry reg)
+    static async Task<int> ListRepositoryAsync(RegistryService reg)
     {
         var repos = await reg.ListRespositoriesAsync();
         foreach (var repo in repos.Names)
@@ -51,7 +51,7 @@ class RepositoryCommand : Command
         return 0;
     }
 
-    static async Task<int> ListTagsAsync(Registry registry, string repo)
+    static async Task<int> ListTagsAsync(RegistryService registry, string repo)
     {
         var tagList = await registry.ListTagsAsync(repo);
         foreach (var tag in tagList.Tags)

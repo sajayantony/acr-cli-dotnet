@@ -3,20 +3,29 @@ using Microsoft.Azure.ContainerRegistry;
 using Microsoft.Azure.ContainerRegistry.Models;
 using System;
 using OCI;
-using System.Text.Json;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 
 namespace AzureContainerRegistry.CLI.Services
 {
+
     class Registry
     {
-        private ContainerRegistryCredentials _creds;
+        private readonly string _registry;
+        private readonly string _username;
+        private readonly string _password;
 
-        public string LoginServer {get; private set;}
+        public string LoginUrl => _registry;
 
-        public Registry(string loginUrl, string username, string password)
+        public string UserName => _username;
+
+        public string Password => _password;
+
+        public Registry(string registry, string username, string password)
         {
-            if (string.IsNullOrEmpty(loginUrl))
-                throw new ArgumentNullException(nameof(loginUrl));
+            if (string.IsNullOrEmpty(registry))
+                throw new ArgumentNullException(nameof(registry));
 
             if (string.IsNullOrEmpty(username))
                 throw new ArgumentNullException(nameof(username));
@@ -24,43 +33,95 @@ namespace AzureContainerRegistry.CLI.Services
             if (string.IsNullOrEmpty(password))
                 throw new ArgumentNullException(nameof(password));
 
+            _registry = registry;
+            _username = username;
+            _password = password;
+        }
+    }
 
-            LoginServer = loginUrl;
-            _creds = new ContainerRegistryCredentials(ContainerRegistryCredentials.LoginMode.TokenAuth, loginUrl, username, password);
+    class RegistryService
+    {
+        private ContainerRegistryCredentials _creds;
+        private AzureContainerRegistryClient _runtimeClient;
+
+        public string LoginServer => _registry.LoginUrl;
+
+        private ILogger _logger;
+        private Registry _registry;
+
+        public RegistryService(Registry registry, ILoggerFactory loggerFactory)
+        {
+            _logger = loggerFactory.CreateLogger(typeof(RegistryService));
+            _registry = registry;
+            _creds = new ContainerRegistryCredentials(
+                ContainerRegistryCredentials.LoginMode.TokenAuth,
+                registry.LoginUrl,
+                registry.UserName,
+                registry.Password);
+            _runtimeClient = new AzureContainerRegistryClient(_creds);
         }
 
         public async Task<Repositories> ListRespositoriesAsync()
         {
-            AzureContainerRegistryClient runtimeClient = new AzureContainerRegistryClient(_creds);
-            return await runtimeClient.Repository.GetListAsync();
+            return await _runtimeClient.Repository.GetListAsync();
         }
 
         public async Task ShowManifestV2Async(ImageReference reference)
         {
+
+            _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
+
             if (!String.IsNullOrEmpty(reference.Tag))
             {
-                AzureContainerRegistryClient runtimeClient = new AzureContainerRegistryClient(_creds);
+                //_runtimeClient = new AzureContainerRegistryClient(_creds);
                 // var manifestResponse = await runtimeClient.Manifests.GetAsync(reference.Repository, reference.Tag, ManifestMediaTypes.ManifestList );
-                
-                var tagAttrsResponse = await runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);                
-                var manifestAttrsResponse= await runtimeClient.Manifests.GetAttributesAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
-                var manifestResponse = await runtimeClient.Manifests.GetAsync(reference.Repository, manifestAttrsResponse.Attributes.Digest);
-                
-                Console.WriteLine(
-                    JsonSerializer.Serialize(
-                            manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType), 
-                            new JsonSerializerOptions() { 
-                                WriteIndented = true, 
-                                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                                }).ToString());
 
+                var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
+
+                _logger.LogInformation($"Tag digest: {tagAttrsResponse.Attributes.Digest}");
+
+                var manifestAttrsResponse = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
+
+                _logger.LogInformation($"MediaType: {manifestAttrsResponse.Attributes.MediaType}");
+                var manifestResponse = await _runtimeClient.Manifests.GetAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
+
+                JsonSerializer serializer = new JsonSerializer();
+                serializer.Formatting = Formatting.Indented;
+                serializer.Serialize(Console.Out, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
             }
+        }
+
+        internal async Task AddTagAsync(ImageReference reference, ImageReference dest)
+        {
+            _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
+
+            if (!String.IsNullOrEmpty(reference.Tag))
+            {
+                var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
+
+                _logger.LogInformation($"Tag digest: {tagAttrsResponse.Attributes.Digest}");
+
+                var manifestAttrsResponse = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
+
+                _logger.LogInformation($"MediaType: {manifestAttrsResponse.Attributes.MediaType}");
+                var manifestResponse = await _runtimeClient.Manifests.GetAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
+
+                
+                JsonSerializer serializer = new JsonSerializer();
+                serializer.Formatting = Formatting.Indented;
+                serializer.Serialize(Console.Out, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
+
+                 _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
+                 _runtimeClient = new AzureContainerRegistryClient(_creds);
+                await _runtimeClient.Manifests.CreateAsync("hello-world", "test-put", manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
+            }
+
         }
 
         public async Task<TagList> ListTagsAsync(string repo)
         {
-            AzureContainerRegistryClient runtimeClient = new AzureContainerRegistryClient(_creds);
-            return await runtimeClient.Tag.GetListAsync(repo);
+
+            return await _runtimeClient.Tag.GetListAsync(repo);
         }
     }
 
@@ -76,29 +137,29 @@ namespace AzureContainerRegistry.CLI.Services
 
     public static class ManifestHelpers
     {
-        public static object Convert(this ManifestWrapper manifestResponse, string mediaType)
+        public static Manifest Convert(this ManifestWrapper manifestResponse, string mediaType)
         {
-            object manifest = null;
-             switch(mediaType)
-                {
-                    case ManifestMediaTypes.V2Manifest: 
-                        manifest = (V2Manifest) manifestResponse;
-                        break;
-                    case ManifestMediaTypes.V1Manifest: 
-                        manifest = (V1Manifest) manifestResponse;
-                        break;
-                    case ManifestMediaTypes.ManifestList: 
-                        manifest = (ManifestList) manifestResponse;
-                        break;
-                    case ManifestMediaTypes.OCIIndex: 
-                        manifest = (OCIIndex) manifestResponse;
-                        break;
-                    case ManifestMediaTypes.OCIManifest: 
-                        manifest = (OCIManifest) manifestResponse;
-                        break;
-                }
+            Manifest manifest = null;
+            switch (mediaType)
+            {
+                case ManifestMediaTypes.V2Manifest:
+                    manifest = (V2Manifest)manifestResponse;
+                    break;
+                case ManifestMediaTypes.V1Manifest:
+                    manifest = (V1Manifest)manifestResponse;
+                    break;
+                case ManifestMediaTypes.ManifestList:
+                    manifest = (ManifestList)manifestResponse;
+                    break;
+                case ManifestMediaTypes.OCIIndex:
+                    manifest = (OCIIndex)manifestResponse;
+                    break;
+                case ManifestMediaTypes.OCIManifest:
+                    manifest = (OCIManifest)manifestResponse;
+                    break;
+            }
 
-                return manifest;
+            return manifest;
         }
     }
 }

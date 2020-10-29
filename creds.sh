@@ -7,4 +7,6 @@ export REGISTRY_LOGIN=$(az acr show --query loginServer -o tsv)
 export REGISTRY_USERNAME=$(az acr credential show --query 'username' -o tsv)
 export REGISTRY_PASSWORD=$(az acr credential show --query 'passwords[0].value' -o tsv)
 
+docker login -u $REGISTRY_USERNAME -p $REGISTRY_PASSWORD $REGISTRY_LOGIN
+
 
