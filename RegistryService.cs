@@ -34,7 +34,7 @@ namespace AzureContainerRegistry.CLI
 
         public async Task ShowManifestV2Async(ImageReference reference)
         {
-            AzureContainerRegistryClient runtimeClient = new AzureContainerRegistryClient(_creds);
+            AzureContainerRegistryClient runtimeClient = new AzureContainerRegistryClient(_creds);            
             var manifestResponse = await runtimeClient.Manifests.GetAsync(reference.Repository, reference.Tag, ManifestMediaTypes.V2Manifest);
             Console.WriteLine(JsonSerializer.Serialize(manifestResponse, new JsonSerializerOptions() { WriteIndented = true }).ToString());
         }

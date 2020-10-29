@@ -19,9 +19,9 @@
             "justMyCode": false,
 
             "env": {
-                "REGISTRY_LOGIN": "sajay.azurecr.io",
-                "REGISTRY_USERNAME" : "sajay",
-                "REGISTRY_PASSWORD" : "TjVpQYfuN8sP+dpMPCoymI8Ca33ADZWt"
+                "REGISTRY_LOGIN": "",
+                "REGISTRY_USERNAME" : "",
+                "REGISTRY_PASSWORD" : ""
             }
         },
         {

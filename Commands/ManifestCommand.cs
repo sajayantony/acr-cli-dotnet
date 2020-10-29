@@ -26,10 +26,11 @@ class ManifestCommand : Command
         var img = new ImageReference();
         img.HostName = registry;
         
-        if(reference.StartsWith(registry))
+        var hostPrefix  =  registry + "/";
+        if(reference.StartsWith(hostPrefix))
         {
             //Trim the registry to get repository and tag. 
-            reference = reference.Substring(registry.Length);
+            reference = reference.Substring(hostPrefix.Length);            
             if(reference.Contains(':'))
             {
               var parts = reference.Split(':');
