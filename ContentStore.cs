@@ -8,19 +8,22 @@ using System.Threading;
 using Microsoft.Rest;
 using System.Net.Http.Headers;
 using System.IO;
+using OCI;
 
-namespace OCIArtifact.Samples
+namespace AzureContainerRegistry.CLI
 {
     public class ContentStore
     {
+        
         public static async Task Pull(string registry, string repo, string tag)
         {
-            var image = new ImageRef()
+            var image = new ImageReference()
             {
                 HostName = registry,
                 Repository = repo,
                 Tag = tag
             };
+
             var loginUri = $"https://{registry}";
             AzureContainerRegistryClient runtimeClient = new AzureContainerRegistryClient(registry, new AnonymousToken(image));
 
@@ -46,9 +49,9 @@ namespace OCIArtifact.Samples
 
         class AnonymousToken : ServiceClientCredentials
         {
-            public ImageRef _image;
+            public ImageReference _image;
 
-            public AnonymousToken(ImageRef image)
+            public AnonymousToken(ImageReference image)
             {
                 _image = image;
             }
@@ -60,7 +63,7 @@ namespace OCIArtifact.Samples
 
             private async Task<string> GetAccessToken()
             {
-                HttpClient c = new HttpClient();
+                HttpClient c = new HttpClient();                
 
                 var service = _image.HostName;
                 var repo = _image.Repository;
@@ -89,11 +92,5 @@ namespace OCIArtifact.Samples
             public string access_token { get; set; }
         }
 
-        public class ImageRef
-        {
-            public string HostName { get; set; }
-            public string Repository { get; set; }
-            public string Tag { get; set; }
-        }
     }
 }
