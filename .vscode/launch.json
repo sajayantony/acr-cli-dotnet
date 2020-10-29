@@ -10,12 +10,19 @@
             "request": "launch",
             "preLaunchTask": "build",
             // If you have changed target frameworks, make sure to update the program path.
-            "program": "${workspaceFolder}/bin/Debug/netcoreapp3.1/oci-artifact-dotnet.dll",
-            "args": [],
+            "program": "${workspaceFolder}/bin/Debug/netcoreapp3.1/acr.dll",
+            "args": ["manifest", "show" , "sajay.azurecr.io/hello-world:latest"],
             "cwd": "${workspaceFolder}",
             // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
             "console": "internalConsole",
-            "stopAtEntry": false
+            "stopAtEntry": false,
+            "justMyCode": false,
+
+            "env": {
+                "REGISTRY_LOGIN": "sajay.azurecr.io",
+                "REGISTRY_USERNAME" : "sajay",
+                "REGISTRY_PASSWORD" : "TjVpQYfuN8sP+dpMPCoymI8Ca33ADZWt"
+            }
         },
         {
             "name": ".NET Core Attach",
