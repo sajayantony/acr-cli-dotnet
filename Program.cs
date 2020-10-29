@@ -1,72 +1,70 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using System.CommandLine;
-using System.CommandLine.Invocation;
-using System.CommandLine.Builder;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
+
+using System.CommandLine.Hosting;
+using System.CommandLine.Builder;
+using System.CommandLine.Parsing;
+using Microsoft.Extensions.Logging;
+using System.CommandLine.Binding;
+using System.CommandLine.Invocation;
+using System;
+using AzureContainerRegistry.CLI.Services;
 
 namespace AzureContainerRegistry.CLI
 {
-
-    
-        class CommandRegistryContext
-        {
-            public string Registry { get; set; }
-            public string Username { get; set; }
-            public string Password { get; set; }
-        }
     class Program
     {
-        static readonly string DEFAULT_PASSWORD = new String('*', 5);
-        static CommandRegistryContext ctx = new CommandRegistryContext();
-
-
         static async Task Main(string[] args)
         {
+            var cmd = new AcrRootCommand();
+            var builder = new CommandLineBuilder(new AcrRootCommand());            
 
-           // Start building root command
-            var rootCommand = new RootCommand
-            {
-                new RepositoryCommand(ctx), 
-                new ManifestCommand(ctx)
-            };
+            await builder.UseHost(_ => Host.CreateDefaultBuilder(),
+                host =>
+                {
+                    InvocationContext context = (InvocationContext)host.Properties[typeof(InvocationContext)];
 
-            rootCommand.Description = System.Environment.GetCommandLineArgs()[0];
-            rootCommand.AddGlobalOption(
-                new Option<string>(
-                    "--registry",
-                    getDefaultValue: () => Environment.GetEnvironmentVariable("REGISTRY_LOGIN"),
-                    "Registry Login Server")
-            );
+                    if (context.ParseResult.ValueForOption<bool>("verbose"))
+                    {
+                        host.ConfigureLogging(logging =>
+                        {
+                            logging.ClearProviders();
+                            logging.AddConsole();
+                        });
+                    }
+                    else
+                    {
+                        host.ConfigureLogging(logging =>
+                        {
+                            logging.ClearProviders();
+                        });
+                    }
 
-            rootCommand.AddGlobalOption(
-                 new Option<string>(
-                       "--username",
-                       getDefaultValue: () => Environment.GetEnvironmentVariable("REGISTRY_USERNAME"),
-                       "Registry Username")
-            );
+                    host.ConfigureServices(services =>
+                    {
+                        var registry = context.ParseResult.ValueForOption<string>("registry");
+                        var username = context.ParseResult.ValueForOption<string>("username");
+                        var password = context.ParseResult.ValueForOption<string>("passworld");
+                        password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ? 
+                                        Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
 
-            rootCommand.AddGlobalOption(
-                 new Option<string>(
-                       "--password",
-                       getDefaultValue: () => Environment.GetEnvironmentVariable("REGISTRY_PASSWORD").Length > 0 ? DEFAULT_PASSWORD : null,
-                       "Registry Login Server")
-            );
-
-            new CommandLineBuilder(rootCommand).UseMiddleware(async (context, next) =>
-            {
-                ctx.Registry = context.ParseResult.ValueForOption<string>("registry");
-                ctx.Username = context.ParseResult.ValueForOption<string>("username");
-
-                var password = context.ParseResult.ValueForOption<string>("passworld");
-                ctx.Password = Environment.GetEnvironmentVariable("REGISTRY_PASSWORD").Length > 0 ? Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
-                await next(context);
-            })
+                        services.AddSingleton<Registry>(new Registry(registry, username, password));
+                    });
+                })
             .UseDefaults()
-            .UseHelp()
-            .Build();
+            .Build()
+            .InvokeAsync(args);
+        }
 
-            await rootCommand.InvokeAsync(args);
+
+        public static IHostBuilder GetHost(InvocationContext invocationContext)
+        {
+            var modelBinder = new ModelBinder<IHostBuilder>();
+            return (IHostBuilder)modelBinder.CreateInstance(invocationContext.BindingContext);
         }
     }
 }

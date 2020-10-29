@@ -3,18 +3,22 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 using AzureContainerRegistry.CLI;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using AzureContainerRegistry.CLI.Services;
 
 class RepositoryCommand : Command
 {
-    public RepositoryCommand(CommandRegistryContext ctx) : base("repository", "Repository operations")
+    public RepositoryCommand() : base("repository", "Repository operations")
     {
         var repoListCommand = new Command("list");
-        repoListCommand.Handler = CommandHandler.Create(() =>
-        {
-            Console.WriteLine("Repositories");
-            Console.WriteLine("------------");
-            return ListRepositoryAsync(ctx.Registry, ctx.Username, ctx.Password);
-        });
+        repoListCommand.Handler = CommandHandler.Create<IHost>(host =>
+       {
+           var registry = host.Services.GetRequiredService<Registry>();
+           Console.WriteLine("Repositories");
+           Console.WriteLine("------------");
+           return ListRepositoryAsync(registry);
+       });
 
 
         var tagListCommand = new Command("list-tags"){
@@ -23,11 +27,12 @@ class RepositoryCommand : Command
                     description: "Repository name")
             };
 
-        tagListCommand.Handler = CommandHandler.Create<string>((repository) =>
+        tagListCommand.Handler = CommandHandler.Create<string, IHost>((repository, host) =>
         {
             Console.WriteLine("Tags");
             Console.WriteLine("----");
-            return ListTagsAsync(ctx.Registry, ctx.Username, ctx.Password, repository);
+            var registry = host.Services.GetRequiredService<Registry>();
+            return ListTagsAsync(registry, repository);
         });
 
         // Add repository commands            
@@ -35,9 +40,8 @@ class RepositoryCommand : Command
         this.Add(tagListCommand);
     }
 
-    static async Task<int> ListRepositoryAsync(string registry, string username, string password)
+    static async Task<int> ListRepositoryAsync(Registry reg)
     {
-        var reg = new Registry(registry, username, password);
         var repos = await reg.ListRespositoriesAsync();
         foreach (var repo in repos.Names)
         {
@@ -47,11 +51,9 @@ class RepositoryCommand : Command
         return 0;
     }
 
-    static async Task<int> ListTagsAsync(string registry, string username, string password, string repo)
+    static async Task<int> ListTagsAsync(Registry registry, string repo)
     {
-
-        var reg = new Registry(registry, username, password);
-        var tagList = await reg.ListTagsAsync(repo);
+        var tagList = await registry.ListTagsAsync(repo);
         foreach (var tag in tagList.Tags)
         {
             Console.WriteLine(tag.Name);

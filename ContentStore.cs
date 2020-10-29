@@ -2,7 +2,6 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 using Microsoft.Azure.ContainerRegistry;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using Microsoft.Rest;
@@ -14,7 +13,6 @@ namespace AzureContainerRegistry.CLI
 {
     public class ContentStore
     {
-        
         public static async Task Pull(string registry, string repo, string tag)
         {
             var image = new ImageReference()

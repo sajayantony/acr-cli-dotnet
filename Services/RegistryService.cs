@@ -5,11 +5,13 @@ using System;
 using OCI;
 using System.Text.Json;
 
-namespace AzureContainerRegistry.CLI
+namespace AzureContainerRegistry.CLI.Services
 {
     class Registry
     {
         private ContainerRegistryCredentials _creds;
+
+        public string LoginServer {get; private set;}
 
         public Registry(string loginUrl, string username, string password)
         {
@@ -23,6 +25,7 @@ namespace AzureContainerRegistry.CLI
                 throw new ArgumentNullException(nameof(password));
 
 
+            LoginServer = loginUrl;
             _creds = new ContainerRegistryCredentials(ContainerRegistryCredentials.LoginMode.TokenAuth, loginUrl, username, password);
         }
 

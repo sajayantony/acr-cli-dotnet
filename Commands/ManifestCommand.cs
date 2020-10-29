@@ -3,30 +3,40 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 using AzureContainerRegistry.CLI;
+using AzureContainerRegistry.CLI.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using OCI;
 
 class ManifestCommand : Command
 {
-    public ManifestCommand(CommandRegistryContext ctx) : base("manifest", "Manifest operations")
+    private ILogger _logger;
+
+    public ManifestCommand() : base("manifest", "Manifest operations")
     {
         var showCmd = new Command("show");
         showCmd.AddArgument(new Argument<string>("reference"));        
-        showCmd.Handler = CommandHandler.Create<string>((reference) =>
+        showCmd.Handler = CommandHandler.Create<string, IHost>((reference, host) =>
         {
-            return ShowManifestV2(ctx.Registry, ctx.Username, ctx.Password, reference);
+
+            var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+            _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
+            var registry = host.Services.GetRequiredService<Registry>();
+            return ShowManifestV2(registry, reference);
         });
 
         
         this.Add(showCmd);
     }
 
-    static async Task<int> ShowManifestV2(string registry, string username, string password, string reference)
+    async Task<int> ShowManifestV2(Registry reg, string reference)
     {
-        var reg = new Registry(registry, username, password);
+        _logger.LogInformation("Querying manifest for ....");
         var img = new ImageReference();
-        img.HostName = registry;
+        img.HostName = reg.LoginServer;
         
-        var hostPrefix  =  registry + "/";
+        var hostPrefix  =  reg.LoginServer + "/";
         if(reference.StartsWith(hostPrefix))
         {
             //Trim the registry to get repository and tag. 
@@ -39,12 +49,10 @@ class ManifestCommand : Command
             }
         }
 
-        System.Console.WriteLine($"Getting manifest for {img.HostName}{img.Repository}:{img.Tag}");
+        _logger.LogInformation($"Getting manifest for {img.HostName}{img.Repository}:{img.Tag}");
         
         await reg.ShowManifestV2Async(img);
      
         return 0;
     }
-
-    
 }
