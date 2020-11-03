@@ -43,9 +43,8 @@ namespace AzureContainerRegistry.CLI.Services
             return await _runtimeClient.Repository.GetListAsync();
         }
 
-        public async Task ShowManifestV2Async(ImageReference reference, bool raw)
+        public async Task ShowManifestAsync(ImageReference reference, bool raw)
         {
-
             var manifestWithAttributes = await GetManifestAsync(reference);
             JsonSerializer serializer = new JsonSerializer();
             if (!raw)
@@ -85,20 +84,14 @@ namespace AzureContainerRegistry.CLI.Services
         {
             var manifestWithAttributes = await GetManifestAsync(img);
             var manifest = manifestWithAttributes.Item1;
-            switch (manifest)
+            var config = manifest.Config(manifestWithAttributes.Item2.MediaType);
+            if (config != null)
             {
-                case V2Manifest v2m:
-                    await WriteBlobAsync(img.Repository, v2m.Config.Digest, v2m.Config.Size, raw);
-                    break;
-
-                case OCIManifest oci:
-                    await WriteBlobAsync(img.Repository, oci.Config.Digest, oci.Config.Size, raw);
-                    break;
-
-                default:
-                    _output.Write($"No config present in manifest of type {manifestWithAttributes.Item2.MediaType}");
-                    break;
+                await WriteBlobAsync(img.Repository, config.Digest, config.Size, raw);
+                return;
             }
+
+            _output.Write($"No config present in manifest of type {manifestWithAttributes.Item2.MediaType}");
         }
 
         async Task WriteBlobAsync(string repo, string digest, long? size, bool raw)

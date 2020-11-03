@@ -26,7 +26,7 @@ namespace AzureContainerRegistry.CLI.Commands
                 // _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
                 var registry = host.Services.GetRequiredService<RegistryService>();
                 var img = reference.ToImageReference(registry.LoginServer);
-                await registry.ShowManifestV2Async(img, raw);
+                await registry.ShowManifestAsync(img, raw);
             });
 
             this.Add(showCmd);
