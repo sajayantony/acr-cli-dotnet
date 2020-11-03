@@ -12,14 +12,14 @@ namespace AzureContainerRegistry.CLI.Commands
         public ManifestCommand() : base("manifest", "Manifest operations")
         {
             var showCmd = new Command("show");
-            showCmd.AddOption( new Option<bool>(
-                aliases : new string[]{ "-raw" , "-r"}, 
-                getDefaultValue : () => false,
+            showCmd.AddOption(new Option<bool>(
+                aliases: new string[] { "-raw", "-r" },
+                getDefaultValue: () => false,
                 "Output the data without formatting"
             ));
 
             showCmd.AddArgument(new Argument<string>("reference"));
-            showCmd.Handler = CommandHandler.Create<string, bool, IHost>(async (reference, raw,  host) =>
+            showCmd.Handler = CommandHandler.Create<string, bool, IHost>(async (reference, raw, host) =>
             {
 
                 // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();

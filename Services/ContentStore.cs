@@ -124,14 +124,13 @@ namespace AzureContainerRegistry.CLI
 
         public async Task DownloadLayerAsync(ImageReference reference, string filename)
         {
-            if(string.IsNullOrEmpty(filename))
+            if (string.IsNullOrEmpty(filename))
             {
                 filename = TrimSha(reference.Digest);
             }
-            
+
             await DownloadLayerAsync(reference.Repository, reference.Digest, filename);
         }
-
 
         void EnsureDirectory(string dir)
         {
@@ -144,9 +143,9 @@ namespace AzureContainerRegistry.CLI
         string TrimSha(string digest)
         {
             int index = digest.IndexOf(':');
-            if(index > -1)
+            if (index > -1)
             {
-                return digest.Substring(index +1);
+                return digest.Substring(index + 1);
             }
 
             return digest;

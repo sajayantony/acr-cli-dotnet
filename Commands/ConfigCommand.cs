@@ -20,9 +20,9 @@ namespace AzureContainerRegistry.CLI.Commands
             showCmd.AddArgument(new Argument<string>("reference"));
             showCmd.Handler = CommandHandler.Create<string, bool, IHost>(async (reference, raw, host) =>
            {
-                // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
-                // _logger = loggerFactory.CreateLogger(typeof(ConfigCommand));
-                var registry = host.Services.GetRequiredService<RegistryService>();
+               // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+               // _logger = loggerFactory.CreateLogger(typeof(ConfigCommand));
+               var registry = host.Services.GetRequiredService<RegistryService>();
                var img = reference.ToImageReference(registry.LoginServer);
                await registry.ShowConfigAsync(img, raw);
            });

@@ -72,7 +72,6 @@ namespace AzureContainerRegistry.CLI.Services
             return await _runtimeClient.Repository.GetListAsync();
         }
 
-
         public async Task ShowManifestV2Async(ImageReference reference, bool raw)
         {
 
@@ -111,7 +110,6 @@ namespace AzureContainerRegistry.CLI.Services
             return (manifest.Convert(manifestAttrsResponse.Attributes.MediaType), manifestAttrsResponse.Attributes);
         }
 
-
         internal async Task ShowConfigAsync(ImageReference img, bool raw)
         {
             var manifestWithAttributes = await GetManifestAsync(img);
@@ -119,12 +117,15 @@ namespace AzureContainerRegistry.CLI.Services
             switch (manifest)
             {
                 case V2Manifest v2m:
-
                     await WriteBlobAsync(img.Repository, v2m.Config.Digest, v2m.Config.Size, raw);
-
                     break;
+
                 case OCIManifest oci:
                     await WriteBlobAsync(img.Repository, oci.Config.Digest, oci.Config.Size, raw);
+                    break;
+
+                default:
+                    _output.Write($"No config present in manifest of type {manifestWithAttributes.Item2.MediaType}");
                     break;
             }
         }
@@ -153,7 +154,6 @@ namespace AzureContainerRegistry.CLI.Services
             {
                 _logger.LogCritical($"Size of config {size.Value} exceed max possible value of 10MB");
             }
-
         }
 
         public async Task AddTagAsync(ImageReference reference, ImageReference dest)
@@ -182,18 +182,15 @@ namespace AzureContainerRegistry.CLI.Services
             }
         }
 
-
         public async Task<Stream> GetBlobAsync(string repo, string digest)
         {
             return await _runtimeClient.Blob.GetAsync(repo, digest);
         }
 
-
         public async Task<TagList> ListTagsAsync(string repo)
         {
             return await _runtimeClient.Tag.GetListAsync(repo);
         }
-
     }
 
     public class TagListFilter

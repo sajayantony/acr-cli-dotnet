@@ -54,7 +54,7 @@ namespace AzureContainerRegistry.CLI.Commands
         {
             var src = srcRef.ToImageReference(reg.LoginServer);
             var dest = destRef.ToImageReference(reg.LoginServer);
-            await reg.AddTagAsync(src, dest);            
+            await reg.AddTagAsync(src, dest);
         }
 
         static async Task ListTagsAsync(RegistryService registry, string repo)
@@ -63,7 +63,7 @@ namespace AzureContainerRegistry.CLI.Commands
             foreach (var tag in tagList.Tags)
             {
                 Console.WriteLine(tag.Name);
-            }            
+            }
         }
     }
 }

@@ -17,9 +17,9 @@ namespace AzureContainerRegistry.CLI
     class Program
     {
         static async Task Main(string[] args)
-        {            
+        {
             var cmd = new AcrRootCommand();
-            var builder = new CommandLineBuilder(new AcrRootCommand());            
+            var builder = new CommandLineBuilder(new AcrRootCommand());
 
             await builder.UseHost(_ => Host.CreateDefaultBuilder(),
                 host =>
