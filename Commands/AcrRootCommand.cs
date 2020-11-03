@@ -1,17 +1,10 @@
 using System;
 using System.CommandLine;
 using System.CommandLine.Builder;
+using AzureContainerRegistry.CLI.Commands;
 
-namespace AzureContainerRegistry.CLI
+namespace AzureContainerRegistry.CLI.Commands
 {
-
-    class CommandRegistryContext
-    {
-        public string Registry { get; set; }
-        public string Username { get; set; }
-        public string Password { get; set; }
-    }
-
     class AcrRootCommand : RootCommand
     {
         static readonly string DEFAULT_PASSWORD = new String('*', 5);
@@ -19,7 +12,7 @@ namespace AzureContainerRegistry.CLI
         public AcrRootCommand()
         {
 
-            this.Description = System.Environment.GetCommandLineArgs()[0];
+            this.Description = "acr operates against an OCI conformant registry";
 
             this.AddGlobalOption(
                 new Option<string>(
@@ -55,7 +48,6 @@ namespace AzureContainerRegistry.CLI
             this.AddCommand(new PullCommand());
             this.AddCommand(new LayerCommand());
             this.AddCommand(new ConfigCommand());
-
         }
     }
 }

@@ -5,12 +5,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 
-namespace AzureContainerRegistry.CLI
+namespace AzureContainerRegistry.CLI.Commands
 {
     class PullCommand : Command
     {
-
-        public PullCommand() : base("pull", "Pull Artifact Operations")
+        public PullCommand() : base("pull", "Pull Artifact")
         {
             this.AddArgument(new Argument<string>("reference"));
             this.Add(new Option<string>(

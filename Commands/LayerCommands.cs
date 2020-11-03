@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 
-namespace AzureContainerRegistry.CLI
+namespace AzureContainerRegistry.CLI.Commands
 {
     class LayerCommand : Command
     {

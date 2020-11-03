@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using AzureContainerRegistry.CLI.Services;
+using AzureContainerRegistry.CLI.Commands;
 
 namespace AzureContainerRegistry.CLI
 {

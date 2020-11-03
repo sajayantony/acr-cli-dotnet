@@ -8,13 +8,13 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OCI;
 
-namespace AzureContainerRegistry.CLI
+namespace AzureContainerRegistry.CLI.Commands
 {
     class TagCommand : Command
     {
         private ILogger _logger;
 
-        public TagCommand() : base("tag", "Manifest operations")
+        public TagCommand() : base("tag", "Tag operations")
         {
             var addCmd = new Command("add");
             addCmd.AddArgument(new Argument<string>("source", "Source image reference myregistry.azurecr.io/repos:source"));

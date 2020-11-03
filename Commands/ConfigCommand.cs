@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 
-namespace AzureContainerRegistry.CLI
+namespace AzureContainerRegistry.CLI.Commands
 {
     class ConfigCommand : Command
     {
@@ -15,7 +15,6 @@ namespace AzureContainerRegistry.CLI
             showCmd.AddArgument(new Argument<string>("reference"));
             showCmd.Handler = CommandHandler.Create<string, IHost>(async (reference, host) =>
             {
-
                 // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
                 // _logger = loggerFactory.CreateLogger(typeof(ConfigCommand));
                 var registry = host.Services.GetRequiredService<RegistryService>();
