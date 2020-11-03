@@ -97,7 +97,6 @@ namespace AzureContainerRegistry.CLI.Services
                 _logger.LogInformation($"GET Tag Attributes {reference.HostName}/{reference.Repository}:{reference.Tag}");
                 var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
                 digest = tagAttrsResponse.Attributes.Digest;
-
             }
 
             _logger.LogInformation($"GET Manifest Attributes: {reference.HostName}/{reference.Repository}@{digest}");
@@ -105,7 +104,7 @@ namespace AzureContainerRegistry.CLI.Services
             manifestMediaType = manifestAttrsResponse.Attributes.MediaType;
 
             _logger.LogInformation($"GET Manifest {reference.HostName}/{reference.Repository}@{digest} with MediaType: {manifestAttrsResponse.Attributes.MediaType}");
-            var manifest = await _runtimeClient.Manifests.GetAsync(reference.Repository, digest);
+            var manifest = await _runtimeClient.Manifests.GetAsync(reference.Repository, digest, manifestMediaType);
             return (manifest.Convert(manifestAttrsResponse.Attributes.MediaType), manifestAttrsResponse.Attributes);
         }
 
@@ -114,29 +113,43 @@ namespace AzureContainerRegistry.CLI.Services
         {
             var manifestWithAttributes = await GetManifestAsync(img);
             var manifest = manifestWithAttributes.Item1;
-            if (manifest is V2Manifest)
+            switch (manifest)
             {
-                var v2m = manifest as V2Manifest;
-                var configDigest = v2m.Config.Digest;
-                if (v2m.Config.Size < 10 * 1024 * 1024) // Limit to 10MB
+                case V2Manifest v2m:
+
+                    await WriteBlobAsync(img.Repository, v2m.Config.Digest, v2m.Config.Size);
+
+                    break;
+                case OCIManifest oci:
+                    await WriteBlobAsync(img.Repository, oci.Config.Digest, oci.Config.Size);
+                    break;
+            }
+
+
+        }
+
+        async Task WriteBlobAsync(string repo, string digest, long? size)
+        {
+            // Ideally validate during download
+            if (size.HasValue && size.Value < 10 * 1024 * 1024)
+            {
+                using (var stream = await this.GetBlobAsync(repo, digest))
+                using (MemoryStream mem = new MemoryStream())
                 {
-                    using (var stream = await this.GetBlobAsync(img.Repository, configDigest))
-                    using (MemoryStream mem = new MemoryStream())
-                    {
-                        await stream.CopyToAsync(mem);
-                        mem.Position = 0;
-                        var json = Encoding.UTF8.GetString(mem.GetBuffer());
-                        var o = JsonConvert.DeserializeObject(json);
-                        JsonSerializer serializer = new JsonSerializer();
-                        serializer.Formatting = Formatting.Indented;
-                        serializer.Serialize(_output, o);
-                    }
-                }
-                else
-                {
-                    _logger.LogCritical("Config is too large...");
+                    await stream.CopyToAsync(mem);
+                    mem.Position = 0;
+                    var json = Encoding.UTF8.GetString(mem.GetBuffer());
+                    var o = JsonConvert.DeserializeObject(json);
+                    JsonSerializer serializer = new JsonSerializer();
+                    serializer.Formatting = Formatting.Indented;
+                    serializer.Serialize(_output, o);
                 }
             }
+            else
+            {
+                _logger.LogCritical($"Size of config {size.Value} exceed max possible value of 10MB");
+            }
+
         }
 
         public async Task AddTagAsync(ImageReference reference, ImageReference dest)
