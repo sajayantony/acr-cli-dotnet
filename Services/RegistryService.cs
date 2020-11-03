@@ -73,13 +73,16 @@ namespace AzureContainerRegistry.CLI.Services
         }
 
 
-        public async Task ShowManifestV2Async(ImageReference reference)
+        public async Task ShowManifestV2Async(ImageReference reference, bool raw)
         {
 
             var manifestWithAttributes = await GetManifestAsync(reference);
             JsonSerializer serializer = new JsonSerializer();
-            serializer.Formatting = Formatting.Indented;
-            serializer.Serialize(Console.Out, manifestWithAttributes.Item1);
+            if (!raw)
+            {
+                serializer.Formatting = Formatting.Indented;
+            }
+            serializer.Serialize(_output, manifestWithAttributes.Item1);
         }
 
         public async Task<(Manifest, ManifestAttributesBase)> GetManifestAsync(ImageReference reference)
@@ -109,7 +112,7 @@ namespace AzureContainerRegistry.CLI.Services
         }
 
 
-        internal async Task ShowConfigAsync(ImageReference img)
+        internal async Task ShowConfigAsync(ImageReference img, bool raw)
         {
             var manifestWithAttributes = await GetManifestAsync(img);
             var manifest = manifestWithAttributes.Item1;
@@ -117,18 +120,16 @@ namespace AzureContainerRegistry.CLI.Services
             {
                 case V2Manifest v2m:
 
-                    await WriteBlobAsync(img.Repository, v2m.Config.Digest, v2m.Config.Size);
+                    await WriteBlobAsync(img.Repository, v2m.Config.Digest, v2m.Config.Size, raw);
 
                     break;
                 case OCIManifest oci:
-                    await WriteBlobAsync(img.Repository, oci.Config.Digest, oci.Config.Size);
+                    await WriteBlobAsync(img.Repository, oci.Config.Digest, oci.Config.Size, raw);
                     break;
             }
-
-
         }
 
-        async Task WriteBlobAsync(string repo, string digest, long? size)
+        async Task WriteBlobAsync(string repo, string digest, long? size, bool raw)
         {
             // Ideally validate during download
             if (size.HasValue && size.Value < 10 * 1024 * 1024)
@@ -141,7 +142,10 @@ namespace AzureContainerRegistry.CLI.Services
                     var json = Encoding.UTF8.GetString(mem.GetBuffer());
                     var o = JsonConvert.DeserializeObject(json);
                     JsonSerializer serializer = new JsonSerializer();
-                    serializer.Formatting = Formatting.Indented;
+                    if (!raw)
+                    {
+                        serializer.Formatting = Formatting.Indented;
+                    }
                     serializer.Serialize(_output, o);
                 }
             }
@@ -170,7 +174,7 @@ namespace AzureContainerRegistry.CLI.Services
 
                 JsonSerializer serializer = new JsonSerializer();
                 serializer.Formatting = Formatting.Indented;
-                serializer.Serialize(Console.Out, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
+                serializer.Serialize(_output, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
 
                 _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
                 _runtimeClient = new AzureContainerRegistryClient(_creds);
