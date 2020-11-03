@@ -66,10 +66,10 @@ namespace AzureContainerRegistry.CLI
             var digest = manifestWithAttributes.Item2.Digest;
 
             _logger.LogInformation($"Downloading layers for {reference.HostName}/{reference.Repository}@{digest} to {outputDir}");
-            
+
             if (manifest is V2Manifest)
             {
-             
+
                 EnsureDirectory(outputDir);
                 // Download manifest
                 var manifestFile = System.IO.Path.Combine(outputDir, "manifest.json");
@@ -85,10 +85,10 @@ namespace AzureContainerRegistry.CLI
 
                 // Download config
                 var v2m = manifest as V2Manifest;
-                var configFile = System.IO.Path.Combine(outputDir, "config.json"); 
-                _logger.LogInformation($"Writing config {configFile}");                
-                 await DownloadLayerAsync(reference.Repository, v2m.Config.Digest, configFile);
-                 _output.WriteLine($"Downloaded config.json : {v2m.Config.Digest}");
+                var configFile = System.IO.Path.Combine(outputDir, "config.json");
+                _logger.LogInformation($"Writing config {configFile}");
+                await DownloadLayerAsync(reference.Repository, v2m.Config.Digest, configFile);
+                _output.WriteLine($"Downloaded config.json : {v2m.Config.Digest}");
 
                 //Write Layers               
                 _logger.LogInformation($"Downloading {v2m.Layers.Count} Layers.");
@@ -96,7 +96,7 @@ namespace AzureContainerRegistry.CLI
                 {
                     var layer = v2m.Layers[0];
                     // Trim "sha256:" from the digest
-                    var fileName = layer.Annotations?.Title ?? layer.Digest.Substring(7);
+                    var fileName = layer.Annotations?.Title ?? TrimSha(digest);
                     fileName = System.IO.Path.Combine(outputDir, fileName);
                     _output.WriteLine($"Downloading layer    : {layer.Digest}");
                     await DownloadLayerAsync(reference.Repository, layer.Digest, fileName);
@@ -107,6 +107,11 @@ namespace AzureContainerRegistry.CLI
 
         public async Task DownloadLayerAsync(string repo, string digest, string filename)
         {
+            if (String.IsNullOrEmpty(filename))
+            {
+                throw new ArgumentNullException(nameof(filename));
+            }
+
             using (var blobStream = await _registry.GetBlobAsync(repo, digest))
             {
                 _logger.LogInformation($"Writing File: {System.IO.Path.GetFullPath(filename)}");
@@ -117,12 +122,34 @@ namespace AzureContainerRegistry.CLI
             }
         }
 
-        public void EnsureDirectory(string dir)
+        public async Task DownloadLayerAsync(ImageReference reference, string filename)
         {
-            if(!Directory.Exists(dir))
+            if(string.IsNullOrEmpty(filename))
+            {
+                filename = TrimSha(reference.Digest);
+            }
+            
+            await DownloadLayerAsync(reference.Repository, reference.Digest, filename);
+        }
+
+
+        void EnsureDirectory(string dir)
+        {
+            if (!Directory.Exists(dir))
             {
                 Directory.CreateDirectory(dir);
             }
+        }
+
+        string TrimSha(string digest)
+        {
+            int index = digest.IndexOf(':');
+            if(index > -1)
+            {
+                return digest.Substring(index +1);
+            }
+
+            return digest;
         }
 
         class AnonymousToken : ServiceClientCredentials

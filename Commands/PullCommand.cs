@@ -12,7 +12,6 @@ namespace AzureContainerRegistry.CLI
 
         public PullCommand() : base("pull", "Pull Artifact Operations")
         {
-
             this.AddArgument(new Argument<string>("reference"));
             this.Add(new Option<string>(
                     aliases: new string[] { "--output", "-o" },

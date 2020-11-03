@@ -12,18 +12,22 @@ namespace AzureContainerRegistry.CLI
 
         public LayerCommand() : base("layer", "Layer Operations")
         {
+            var pullCmd = new Command("pull");
 
-            this.AddArgument(new Argument<string>("digest"));
-            this.Add(new Option<string>(
-                    aliases: new string[] { "--output", "-o" },
-                    getDefaultValue: () => System.IO.Directory.GetCurrentDirectory(),
-                    description: "Output Directory to download contents"));
-            this.Handler = CommandHandler.Create<string, string, IHost>(async (reference, output, host) =>
+            pullCmd.AddArgument(new Argument<string>("reference", "Layer reference e.g. myregistry.azurecr.io/repo@sha25627e17ff3"));
+            pullCmd.Add(new Option<string>(
+                    aliases: new string[] { "--output", "-o" },                    
+                    description: "Filename to download contents. Defaults to digest of the layer"));
+            pullCmd.Handler = CommandHandler.Create<string, string, IHost>(async (reference, output, host) =>
            {
                var contentStore = host.Services.GetRequiredService<ContentStore>();
                var registry = host.Services.GetRequiredService<Registry>();
-               await contentStore.PullAsync(reference.ToImageReference(registry.LoginUrl), output);
+               await contentStore.DownloadLayerAsync(
+                   reference.ToImageReference(registry.LoginUrl), 
+                   filename: output);
            });
+
+           this.Add(pullCmd);
         }
     }
 }
