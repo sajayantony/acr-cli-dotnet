@@ -66,7 +66,7 @@ namespace AzureContainerRegistry.CLI
             var digest = manifestWithAttributes.Item2.Digest;
 
             _logger.LogInformation($"Downloading layers for {reference.HostName}/{reference.Repository}@{digest} to {outputDir}");
-           
+
             await DownloadContents(
                     reference,
                     manifestWithAttributes.Item1,

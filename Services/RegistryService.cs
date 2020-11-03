@@ -13,35 +13,6 @@ using System.Collections.Generic;
 namespace AzureContainerRegistry.CLI.Services
 {
 
-    class Registry
-    {
-        private readonly string _registry;
-        private readonly string _username;
-        private readonly string _password;
-
-        public string LoginUrl => _registry;
-
-        public string UserName => _username;
-
-        public string Password => _password;
-
-        public Registry(string registry, string username, string password, TextWriter output)
-        {
-            if (string.IsNullOrEmpty(registry))
-                throw new ArgumentNullException(nameof(registry));
-
-            if (string.IsNullOrEmpty(username))
-                throw new ArgumentNullException(nameof(username));
-
-            if (string.IsNullOrEmpty(password))
-                throw new ArgumentNullException(nameof(password));
-
-            _registry = registry;
-            _username = username;
-            _password = password;
-        }
-    }
-
     class RegistryService
     {
         private ContainerRegistryCredentials _creds;
@@ -200,61 +171,6 @@ namespace AzureContainerRegistry.CLI.Services
         public TagListFilter(string digest)
         {
             Digest = digest;
-        }
-    }
-
-    public static class ManifestHelpers
-    {
-        public static Manifest Convert(this ManifestWrapper manifestResponse, string mediaType)
-        {
-            Manifest manifest = null;
-            switch (mediaType)
-            {
-                case ManifestMediaTypes.V2Manifest:
-                    manifest = (V2Manifest)manifestResponse;
-                    break;
-                case ManifestMediaTypes.V1Manifest:
-                    manifest = (V1Manifest)manifestResponse;
-                    break;
-                case ManifestMediaTypes.ManifestList:
-                    manifest = (ManifestList)manifestResponse;
-                    break;
-                case ManifestMediaTypes.OCIIndex:
-                    manifest = (OCIIndex)manifestResponse;
-                    break;
-                case ManifestMediaTypes.OCIManifest:
-                    manifest = (OCIManifest)manifestResponse;
-                    break;
-            }
-
-            return manifest;
-        }
-
-
-        public static IList<Descriptor> Layers(this Manifest manifest, string mediaType)
-        {
-            switch(manifest)
-            {
-                case OCIManifest oci:
-                    return oci.Layers;
-                case V2Manifest v2m:
-                    return v2m.Layers;
-            }
-
-            return new List<Descriptor>();
-        }
-
-        public static Descriptor Config(this Manifest manifest, string mediaType)
-        {
-            switch(manifest)
-            {
-                case OCIManifest oci:
-                    return oci.Config;
-                case V2Manifest v2m:
-                    return v2m.Config;
-            }
-
-            return null;
         }
     }
 }

@@ -50,7 +50,7 @@ namespace AzureContainerRegistry.CLI
                         password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ?
                                         Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
 
-                        services.AddSingleton<Registry>(new Registry(registry, username, password, System.Console.Out));
+                        services.AddSingleton<Registry>(new Registry(registry, username, password));
                         services.AddSingleton(typeof(RegistryService));
                         services.AddSingleton(typeof(ContentStore));
                         services.AddSingleton<System.IO.TextWriter>(System.Console.Out);
