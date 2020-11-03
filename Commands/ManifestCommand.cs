@@ -12,48 +12,23 @@ namespace AzureContainerRegistry.CLI
 {
     class ManifestCommand : Command
     {
-        private ILogger _logger;
 
         public ManifestCommand() : base("manifest", "Manifest operations")
         {
             var showCmd = new Command("show");
             showCmd.AddArgument(new Argument<string>("reference"));
-            showCmd.Handler = CommandHandler.Create<string, IHost>((reference, host) =>
+            showCmd.Handler = CommandHandler.Create<string, IHost>(async (reference, host) =>
             {
 
-                var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
-                _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
+                // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
+                // _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
                 var registry = host.Services.GetRequiredService<RegistryService>();
-                return ShowManifestV2(registry, reference);
+                var img = reference.ToImageReference(registry.LoginServer);
+                await registry.ShowManifestV2Async(img);
             });
 
 
             this.Add(showCmd);
-        }
-
-        async Task<int> ShowManifestV2(RegistryService reg, string reference)
-        {
-            var img = new ImageReference();
-            img.HostName = reg.LoginServer;
-
-            var hostPrefix = reg.LoginServer + "/";
-            if (reference.StartsWith(hostPrefix))
-            {
-                //Trim the registry to get repository and tag. 
-                reference = reference.Substring(hostPrefix.Length);
-                if (reference.Contains(':'))
-                {
-                    var parts = reference.Split(':');
-                    img.Repository = parts[0];
-                    img.Tag = parts[1];
-                }
-            }
-
-          
-
-            await reg.ShowManifestV2Async(img);
-
-            return 0;
         }
     }
 }

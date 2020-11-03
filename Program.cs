@@ -46,19 +46,20 @@ namespace AzureContainerRegistry.CLI
                         var registry = context.ParseResult.ValueForOption<string>("registry");
                         var username = context.ParseResult.ValueForOption<string>("username");
                         var password = context.ParseResult.ValueForOption<string>("passworld");
-                        password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ? 
+                        password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ?
                                         Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
-                       
 
-                        services.AddSingleton<Registry>(new Registry(registry, username, password));
+                        services.AddSingleton<Registry>(new Registry(registry, username, password, System.Console.Out));
                         services.AddSingleton(typeof(RegistryService));
+                        services.AddSingleton(typeof(ContentStore));
+                        services.AddSingleton<System.IO.TextWriter>(System.Console.Out);
+
                     });
                 })
             .UseDefaults()
             .Build()
             .InvokeAsync(args);
         }
-
 
         public static IHostBuilder GetHost(InvocationContext invocationContext)
         {

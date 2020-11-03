@@ -8,13 +8,6 @@ namespace AzureContainerRegistry.CLI
 
     static class Extensions
     {
-        public static IHost GetHost(this InvocationContext invocationContext)
-        {
-            var modelBinder = new ModelBinder<IHost>();
-            return (IHost)modelBinder.CreateInstance(invocationContext.BindingContext);
-        }
-
-
         public static ImageReference ToImageReference(this string reference, string registry)
         {
             var img = new ImageReference();
@@ -25,12 +18,30 @@ namespace AzureContainerRegistry.CLI
             {
                 //Trim the registry to get repository and tag. 
                 reference = reference.Substring(hostPrefix.Length);
-                if (reference.Contains(':'))
+                if (reference.Contains("@sha256"))
+                {
+                    var parts = reference.Split('@');
+                    if (parts.Length > 1)
+                    {
+                        img.Repository = parts[0];
+                        img.Digest = parts[1];
+                    }
+
+                }
+                else if (reference.Contains(':'))
                 {
                     var parts = reference.Split(':');
-                    img.Repository = parts[0];
-                    img.Tag = parts[1];
+                    if (parts.Length > 1)
+                    {
+                        img.Repository = parts[0];
+                        img.Tag = parts[1];
+                    }
                 }
+            }
+
+            if (string.IsNullOrEmpty(img.Digest) && string.IsNullOrEmpty(img.Tag))
+            {
+                throw new System.Exception($"Invalid Image format: {reference}");
             }
 
             return img;

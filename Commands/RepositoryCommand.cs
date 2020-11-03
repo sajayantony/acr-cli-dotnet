@@ -12,32 +12,17 @@ class RepositoryCommand : Command
     public RepositoryCommand() : base("repository", "Repository operations")
     {
         var repoListCommand = new Command("list");
-        repoListCommand.Handler = CommandHandler.Create<IHost>(host =>
+        repoListCommand.Handler = CommandHandler.Create<IHost>(async (host) =>
        {
            var registry = host.Services.GetRequiredService<RegistryService>();
            Console.WriteLine("Repositories");
            Console.WriteLine("------------");
-           return ListRepositoryAsync(registry);
+           await ListRepositoryAsync(registry);
        });
 
 
-        var tagListCommand = new Command("list-tags"){
-                 new Option<string>(
-                    "--repository",
-                    description: "Repository name")
-            };
-
-        tagListCommand.Handler = CommandHandler.Create<string, IHost>((repository, host) =>
-        {
-            Console.WriteLine("Tags");
-            Console.WriteLine("----");
-            var registry = host.Services.GetRequiredService<RegistryService>();
-            return ListTagsAsync(registry, repository);
-        });
-
         // Add repository commands            
         this.Add(repoListCommand);
-        this.Add(tagListCommand);
     }
 
     static async Task<int> ListRepositoryAsync(RegistryService reg)
@@ -51,14 +36,4 @@ class RepositoryCommand : Command
         return 0;
     }
 
-    static async Task<int> ListTagsAsync(RegistryService registry, string repo)
-    {
-        var tagList = await registry.ListTagsAsync(repo);
-        foreach (var tag in tagList.Tags)
-        {
-            Console.WriteLine(tag.Name);
-        }
-
-        return 0;
-    }
 }

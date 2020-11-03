@@ -6,6 +6,7 @@ using OCI;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using System.IO;
 
 namespace AzureContainerRegistry.CLI.Services
 {
@@ -22,7 +23,7 @@ namespace AzureContainerRegistry.CLI.Services
 
         public string Password => _password;
 
-        public Registry(string registry, string username, string password)
+        public Registry(string registry, string username, string password, TextWriter output)
         {
             if (string.IsNullOrEmpty(registry))
                 throw new ArgumentNullException(nameof(registry));
@@ -66,32 +67,44 @@ namespace AzureContainerRegistry.CLI.Services
             return await _runtimeClient.Repository.GetListAsync();
         }
 
+
         public async Task ShowManifestV2Async(ImageReference reference)
         {
 
-            _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
+            var manifestWithAttributes = await GetManifestAsync(reference);
+            JsonSerializer serializer = new JsonSerializer();
+            serializer.Formatting = Formatting.Indented;
+            serializer.Serialize(Console.Out, manifestWithAttributes.Item1);
+        }
 
+        public async Task<(Manifest, ManifestAttributesBase)> GetManifestAsync(ImageReference reference)
+        {
+
+            string digest = reference.Digest;
+            string manifestMediaType = null;
+
+            // Get the digest pointed to by the given tag
             if (!String.IsNullOrEmpty(reference.Tag))
             {
                 //_runtimeClient = new AzureContainerRegistryClient(_creds);
                 // var manifestResponse = await runtimeClient.Manifests.GetAsync(reference.Repository, reference.Tag, ManifestMediaTypes.ManifestList );
 
+                _logger.LogInformation($"GET Tag Attributes {reference.HostName}/{reference.Repository}:{reference.Tag}");
                 var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
+                digest = tagAttrsResponse.Attributes.Digest;
 
-                _logger.LogInformation($"Tag digest: {tagAttrsResponse.Attributes.Digest}");
-
-                var manifestAttrsResponse = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
-
-                _logger.LogInformation($"MediaType: {manifestAttrsResponse.Attributes.MediaType}");
-                var manifestResponse = await _runtimeClient.Manifests.GetAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
-
-                JsonSerializer serializer = new JsonSerializer();
-                serializer.Formatting = Formatting.Indented;
-                serializer.Serialize(Console.Out, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
             }
+
+            _logger.LogInformation($"GET Manifest Attributes: {reference.HostName}/{reference.Repository}@{digest}");
+            var manifestAttrsResponse = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, digest);
+            manifestMediaType = manifestAttrsResponse.Attributes.MediaType;
+
+            _logger.LogInformation($"GET Manifest {reference.HostName}/{reference.Repository}@{digest} with MediaType: {manifestAttrsResponse.Attributes.MediaType}");
+            var manifest = await _runtimeClient.Manifests.GetAsync(reference.Repository, digest);
+            return (manifest.Convert(manifestAttrsResponse.Attributes.MediaType), manifestAttrsResponse.Attributes);
         }
 
-        internal async Task AddTagAsync(ImageReference reference, ImageReference dest)
+        public async Task AddTagAsync(ImageReference reference, ImageReference dest)
         {
             _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
 
@@ -106,17 +119,25 @@ namespace AzureContainerRegistry.CLI.Services
                 _logger.LogInformation($"MediaType: {manifestAttrsResponse.Attributes.MediaType}");
                 var manifestResponse = await _runtimeClient.Manifests.GetAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
 
-                
+
                 JsonSerializer serializer = new JsonSerializer();
                 serializer.Formatting = Formatting.Indented;
                 serializer.Serialize(Console.Out, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
 
-                 _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
-                 _runtimeClient = new AzureContainerRegistryClient(_creds);
+                _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
+                _runtimeClient = new AzureContainerRegistryClient(_creds);
                 await _runtimeClient.Manifests.CreateAsync("hello-world", "test-put", manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
             }
 
+
         }
+
+
+        public async Task<Stream> GetBlobAsync(string repo, string digest)
+        {
+            return await _runtimeClient.Blob.GetAsync(repo, digest);
+        }
+
 
         public async Task<TagList> ListTagsAsync(string repo)
         {
