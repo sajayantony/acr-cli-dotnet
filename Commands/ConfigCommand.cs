@@ -7,9 +7,9 @@ using Microsoft.Extensions.Hosting;
 
 namespace AzureContainerRegistry.CLI
 {
-    class ManifestCommand : Command
+    class ConfigCommand : Command
     {
-        public ManifestCommand() : base("manifest", "Manifest operations")
+        public ConfigCommand() : base("config", "Manifest operations")
         {
             var showCmd = new Command("show");
             showCmd.AddArgument(new Argument<string>("reference"));
@@ -17,10 +17,10 @@ namespace AzureContainerRegistry.CLI
             {
 
                 // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
-                // _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
+                // _logger = loggerFactory.CreateLogger(typeof(ConfigCommand));
                 var registry = host.Services.GetRequiredService<RegistryService>();
                 var img = reference.ToImageReference(registry.LoginServer);
-                await registry.ShowManifestV2Async(img);
+                await registry.ShowConfigAsync(img);
             });
 
             this.Add(showCmd);

@@ -54,6 +54,7 @@ namespace AzureContainerRegistry.CLI
             this.AddCommand(new TagCommand());
             this.AddCommand(new PullCommand());
             this.AddCommand(new LayerCommand());
+            this.AddCommand(new ConfigCommand());
 
         }
     }

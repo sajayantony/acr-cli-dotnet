@@ -7,6 +7,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.IO;
+using System.Text;
+using System.Collections.Generic;
 
 namespace AzureContainerRegistry.CLI.Services
 {
@@ -50,10 +52,13 @@ namespace AzureContainerRegistry.CLI.Services
         private ILogger _logger;
         private Registry _registry;
 
-        public RegistryService(Registry registry, ILoggerFactory loggerFactory)
+        private TextWriter _output;
+
+        public RegistryService(Registry registry, ILoggerFactory loggerFactory, TextWriter output)
         {
             _logger = loggerFactory.CreateLogger(typeof(RegistryService));
             _registry = registry;
+            _output = output;
             _creds = new ContainerRegistryCredentials(
                 ContainerRegistryCredentials.LoginMode.TokenAuth,
                 registry.LoginUrl,
@@ -104,6 +109,36 @@ namespace AzureContainerRegistry.CLI.Services
             return (manifest.Convert(manifestAttrsResponse.Attributes.MediaType), manifestAttrsResponse.Attributes);
         }
 
+
+        internal async Task ShowConfigAsync(ImageReference img)
+        {
+            var manifestWithAttributes = await GetManifestAsync(img);
+            var manifest = manifestWithAttributes.Item1;
+            if (manifest is V2Manifest)
+            {
+                var v2m = manifest as V2Manifest;
+                var configDigest = v2m.Config.Digest;
+                if (v2m.Config.Size < 10 * 1024 * 1024) // Limit to 10MB
+                {
+                    using (var stream = await this.GetBlobAsync(img.Repository, configDigest))
+                    using (MemoryStream mem = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(mem);
+                        mem.Position = 0;
+                        var json = Encoding.UTF8.GetString(mem.GetBuffer());
+                        var o = JsonConvert.DeserializeObject(json);
+                        JsonSerializer serializer = new JsonSerializer();
+                        serializer.Formatting = Formatting.Indented;
+                        serializer.Serialize(_output, o);
+                    }
+                }
+                else
+                {
+                    _logger.LogCritical("Config is too large...");
+                }
+            }
+        }
+
         public async Task AddTagAsync(ImageReference reference, ImageReference dest)
         {
             _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
@@ -128,8 +163,6 @@ namespace AzureContainerRegistry.CLI.Services
                 _runtimeClient = new AzureContainerRegistryClient(_creds);
                 await _runtimeClient.Manifests.CreateAsync("hello-world", "test-put", manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
             }
-
-
         }
 
 
@@ -141,9 +174,9 @@ namespace AzureContainerRegistry.CLI.Services
 
         public async Task<TagList> ListTagsAsync(string repo)
         {
-
             return await _runtimeClient.Tag.GetListAsync(repo);
         }
+
     }
 
     public class TagListFilter
