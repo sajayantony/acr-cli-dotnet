@@ -66,42 +66,49 @@ namespace AzureContainerRegistry.CLI
             var digest = manifestWithAttributes.Item2.Digest;
 
             _logger.LogInformation($"Downloading layers for {reference.HostName}/{reference.Repository}@{digest} to {outputDir}");
+           
+            await DownloadContents(
+                    reference,
+                    manifestWithAttributes.Item1,
+                    manifestWithAttributes.Item2,
+                    outputDir);
+        }
 
-            if (manifest is V2Manifest)
+        async Task DownloadContents(ImageReference reference, Manifest manifest, ManifestAttributesBase attributes, string outputDir)
+        {
+            EnsureDirectory(outputDir);
+
+            // Download manifest
+            var manifestFile = System.IO.Path.Combine(outputDir, "manifest.json");
+            _logger.LogInformation($"Writing Manifest {manifestFile}");
+
+            using (var fs = File.OpenWrite(manifestFile))
+            using (var txt = new StreamWriter(fs))
             {
+                JsonSerializer serializer = new JsonSerializer();
+                serializer.Serialize(txt, manifest);
+            }
+            _output.WriteLine($"Downloaded manifest.json : {attributes.Digest}");
 
-                EnsureDirectory(outputDir);
-                // Download manifest
-                var manifestFile = System.IO.Path.Combine(outputDir, "manifest.json");
-                _logger.LogInformation($"Writing Manifest {manifestFile}");
+            // Download config
+            var configFile = System.IO.Path.Combine(outputDir, "config.json");
+            _logger.LogInformation($"Writing config {configFile}");
+            var config = manifest.Config(attributes.MediaType);
+            await DownloadLayerAsync(reference.Repository, config.Digest, configFile);
+            _output.WriteLine($"Downloaded config.json : {config.Digest}");
 
-                using (var fs = File.OpenWrite(manifestFile))
-                using (var txt = new StreamWriter(fs))
-                {
-                    JsonSerializer serializer = new JsonSerializer();
-                    serializer.Serialize(txt, manifestWithAttributes.Item1);
-                }
-                _output.WriteLine($"Downloaded manifest.json : {digest}");
-
-                // Download config
-                var v2m = manifest as V2Manifest;
-                var configFile = System.IO.Path.Combine(outputDir, "config.json");
-                _logger.LogInformation($"Writing config {configFile}");
-                await DownloadLayerAsync(reference.Repository, v2m.Config.Digest, configFile);
-                _output.WriteLine($"Downloaded config.json : {v2m.Config.Digest}");
-
-                //Write Layers               
-                _logger.LogInformation($"Downloading {v2m.Layers.Count} Layers.");
-                for (int i = 0; i < v2m.Layers.Count; i++)
-                {
-                    var layer = v2m.Layers[0];
-                    // Trim "sha256:" from the digest
-                    var fileName = layer.Annotations?.Title ?? TrimSha(digest);
-                    fileName = System.IO.Path.Combine(outputDir, fileName);
-                    _output.WriteLine($"Downloading layer    : {layer.Digest}");
-                    await DownloadLayerAsync(reference.Repository, layer.Digest, fileName);
-                    _output.WriteLine($"Downloading complete : {layer.Digest}");
-                }
+            //Write Layers        
+            var layers = manifest.Layers(attributes.MediaType);
+            _logger.LogInformation($"Downloading {layers.Count} Layers.");
+            for (int i = 0; i < layers.Count; i++)
+            {
+                var layer = layers[0];
+                // Trim "sha256:" from the digest
+                var fileName = layer.Annotations?.Title ?? TrimSha(layer.Digest);
+                fileName = System.IO.Path.Combine(outputDir, fileName);
+                _output.WriteLine($"Downloading layer    : {layer.Digest}");
+                await DownloadLayerAsync(reference.Repository, layer.Digest, fileName);
+                _output.WriteLine($"Downloading complete : {layer.Digest}");
             }
         }
 

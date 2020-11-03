@@ -229,6 +229,33 @@ namespace AzureContainerRegistry.CLI.Services
 
             return manifest;
         }
+
+
+        public static IList<Descriptor> Layers(this Manifest manifest, string mediaType)
+        {
+            switch(manifest)
+            {
+                case OCIManifest oci:
+                    return oci.Layers;
+                case V2Manifest v2m:
+                    return v2m.Layers;
+            }
+
+            return new List<Descriptor>();
+        }
+
+        public static Descriptor Config(this Manifest manifest, string mediaType)
+        {
+            switch(manifest)
+            {
+                case OCIManifest oci:
+                    return oci.Config;
+                case V2Manifest v2m:
+                    return v2m.Config;
+            }
+
+            return null;
+        }
     }
 }
 
