@@ -3,39 +3,27 @@ using Microsoft.Azure.ContainerRegistry;
 using Microsoft.Azure.ContainerRegistry.Models;
 using System;
 using OCI;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using System.IO;
 using System.Text;
-using System.Collections.Generic;
 
 namespace AzureContainerRegistry.CLI.Services
 {
 
     class RegistryService
     {
-        private ContainerRegistryCredentials _creds;
         private AzureContainerRegistryClient _runtimeClient;
 
-        public string LoginServer => _registry.LoginUrl;
-
         private ILogger _logger;
-        private Registry _registry;
 
         private TextWriter _output;
 
-        public RegistryService(Registry registry, ILoggerFactory loggerFactory, TextWriter output)
+        public RegistryService(CredentialsProvider credsproviders, ILoggerFactory loggerFactory, TextWriter output)
         {
             _logger = loggerFactory.CreateLogger(typeof(RegistryService));
-            _registry = registry;
             _output = output;
-            _creds = new ContainerRegistryCredentials(
-                ContainerRegistryCredentials.LoginMode.TokenAuth,
-                registry.LoginUrl,
-                registry.UserName,
-                registry.Password);
-            _runtimeClient = new AzureContainerRegistryClient(_creds);
+            _runtimeClient = new AzureContainerRegistryClient(credsproviders.Credentials);
         }
 
         public async Task<Repositories> ListRespositoriesAsync()
@@ -43,7 +31,7 @@ namespace AzureContainerRegistry.CLI.Services
             return await _runtimeClient.Repository.GetListAsync();
         }
 
-        public async Task ShowManifestAsync(ImageReference reference, bool raw)
+        public async Task ShowManifestAsync(ArtifactReference reference, bool raw)
         {
             var manifestWithAttributes = await GetManifestAsync(reference);
             JsonSerializer serializer = new JsonSerializer();
@@ -51,36 +39,43 @@ namespace AzureContainerRegistry.CLI.Services
             {
                 serializer.Formatting = Formatting.Indented;
             }
+
             serializer.Serialize(_output, manifestWithAttributes.Item1);
         }
 
-        public async Task<(Manifest, ManifestAttributesBase)> GetManifestAsync(ImageReference reference)
+        public async Task<(Manifest, ManifestAttributesBase)> GetManifestAsync(ArtifactReference reference)
         {
+            ManifestAttributes manifestAttrResp = null;
+            var digest = reference.Digest;
 
-            string digest = reference.Digest;
-            string manifestMediaType = null;
-
-            // Get the digest pointed to by the given tag
-            if (!String.IsNullOrEmpty(reference.Tag))
+            try
             {
-                //_runtimeClient = new AzureContainerRegistryClient(_creds);
-                // var manifestResponse = await runtimeClient.Manifests.GetAsync(reference.Repository, reference.Tag, ManifestMediaTypes.ManifestList );
+                // Get the digest pointed to by the given tag
+                if (!String.IsNullOrEmpty(reference.Tag))
+                {
+                    _logger.LogInformation($"GET Tag Attributes {reference.HostName}/{reference.Repository}:{reference.Tag}");
+                    var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
+                    digest = tagAttrsResponse.Attributes.Digest;
+                }
 
-                _logger.LogInformation($"GET Tag Attributes {reference.HostName}/{reference.Repository}:{reference.Tag}");
-                var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
-                digest = tagAttrsResponse.Attributes.Digest;
+                _logger.LogInformation($"GET Manifest Attributes: {reference.HostName}/{reference.Repository}@{digest}");
+                manifestAttrResp = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, digest);
+                _logger.LogInformation($"GET Manifest {reference.HostName}/{reference.Repository}@{digest} with MediaType: {manifestAttrResp.Attributes.MediaType}");
+
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error when getting Attributes. Might be not an Azure Container Registry or might not have access to metadata API.");
             }
 
-            _logger.LogInformation($"GET Manifest Attributes: {reference.HostName}/{reference.Repository}@{digest}");
-            var manifestAttrsResponse = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, digest);
-            manifestMediaType = manifestAttrsResponse.Attributes.MediaType;
+            var mediaType = manifestAttrResp.Attributes.MediaType;
+            digest = manifestAttrResp.Attributes.Digest;
 
-            _logger.LogInformation($"GET Manifest {reference.HostName}/{reference.Repository}@{digest} with MediaType: {manifestAttrsResponse.Attributes.MediaType}");
-            var manifest = await _runtimeClient.Manifests.GetAsync(reference.Repository, digest, manifestMediaType);
-            return (manifest.Convert(manifestAttrsResponse.Attributes.MediaType), manifestAttrsResponse.Attributes);
+            var manifest = await _runtimeClient.Manifests.GetAsync(reference.Repository, digest, mediaType);
+            return (manifest.Convert(mediaType), manifestAttrResp.Attributes);
         }
 
-        internal async Task ShowConfigAsync(ImageReference img, bool raw)
+        internal async Task ShowConfigAsync(ArtifactReference img, bool raw)
         {
             var manifestWithAttributes = await GetManifestAsync(img);
             var manifest = manifestWithAttributes.Item1;
@@ -120,7 +115,7 @@ namespace AzureContainerRegistry.CLI.Services
             }
         }
 
-        public async Task AddTagAsync(ImageReference reference, ImageReference dest)
+        public async Task AddTagAsync(ArtifactReference reference, ArtifactReference dest)
         {
             _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
 
@@ -141,7 +136,6 @@ namespace AzureContainerRegistry.CLI.Services
                 serializer.Serialize(_output, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
 
                 _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
-                _runtimeClient = new AzureContainerRegistryClient(_creds);
                 await _runtimeClient.Manifests.CreateAsync("hello-world", "test-put", manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
             }
         }

@@ -27,9 +27,9 @@ namespace AzureContainerRegistry.CLI
             _output = output;
         }
 
-        public static async Task Pull(string registry, string repo, string tag)
+        public static async Task PullAsync(string registry, string repo, string tag)
         {
-            var image = new ImageReference()
+            var image = new ArtifactReference()
             {
                 HostName = registry,
                 Repository = repo,
@@ -59,7 +59,7 @@ namespace AzureContainerRegistry.CLI
             }
         }
 
-        public async Task PullAsync(ImageReference reference, string outputDir)
+        public async Task PullAsync(ArtifactReference reference, string outputDir)
         {
             var manifestWithAttributes = await _registry.GetManifestAsync(reference);
             var manifest = manifestWithAttributes.Item1;
@@ -67,14 +67,14 @@ namespace AzureContainerRegistry.CLI
 
             _logger.LogInformation($"Downloading layers for {reference.HostName}/{reference.Repository}@{digest} to {outputDir}");
 
-            await DownloadContents(
+            await DownloadContentsAsync(
                     reference,
                     manifestWithAttributes.Item1,
                     manifestWithAttributes.Item2,
                     outputDir);
         }
 
-        async Task DownloadContents(ImageReference reference, Manifest manifest, ManifestAttributesBase attributes, string outputDir)
+        async Task DownloadContentsAsync(ArtifactReference reference, Manifest manifest, ManifestAttributesBase attributes, string outputDir)
         {
             EnsureDirectory(outputDir);
 
@@ -129,7 +129,7 @@ namespace AzureContainerRegistry.CLI
             }
         }
 
-        public async Task DownloadLayerAsync(ImageReference reference, string filename)
+        public async Task DownloadLayerAsync(ArtifactReference reference, string filename)
         {
             if (string.IsNullOrEmpty(filename))
             {
@@ -160,9 +160,9 @@ namespace AzureContainerRegistry.CLI
 
         class AnonymousToken : ServiceClientCredentials
         {
-            public ImageReference _image;
+            public ArtifactReference _image;
 
-            public AnonymousToken(ImageReference image)
+            public AnonymousToken(ArtifactReference image)
             {
                 _image = image;
             }

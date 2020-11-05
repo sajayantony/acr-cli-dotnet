@@ -9,7 +9,7 @@ namespace AzureContainerRegistry.CLI.Commands
 {
     class ConfigCommand : Command
     {
-        public ConfigCommand() : base("config", "Manifest operations")
+        public ConfigCommand() : base("config", "Config operations")
         {
             var showCmd = new Command("show");
             showCmd.AddOption(new Option<bool>(
@@ -20,10 +20,8 @@ namespace AzureContainerRegistry.CLI.Commands
             showCmd.AddArgument(new Argument<string>("reference"));
             showCmd.Handler = CommandHandler.Create<string, bool, IHost>(async (reference, raw, host) =>
            {
-               // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
-               // _logger = loggerFactory.CreateLogger(typeof(ConfigCommand));
                var registry = host.Services.GetRequiredService<RegistryService>();
-               var img = reference.ToImageReference(registry.LoginServer);
+               var img = reference.ToArtifactReference();
                await registry.ShowConfigAsync(img, raw);
            });
 

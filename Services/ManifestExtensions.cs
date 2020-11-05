@@ -31,7 +31,6 @@ namespace AzureContainerRegistry.CLI.Services
             return manifest;
         }
 
-
         public static IList<Descriptor> Layers(this Manifest manifest, string mediaType)
         {
             switch (manifest)

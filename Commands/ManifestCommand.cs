@@ -21,15 +21,14 @@ namespace AzureContainerRegistry.CLI.Commands
             showCmd.AddArgument(new Argument<string>("reference"));
             showCmd.Handler = CommandHandler.Create<string, bool, IHost>(async (reference, raw, host) =>
             {
-
-                // var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
-                // _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
+                host.Services.GetRequiredService<CredentialsProvider>().TryInitialize(reference);
                 var registry = host.Services.GetRequiredService<RegistryService>();
-                var img = reference.ToImageReference(registry.LoginServer);
+                var img = reference.ToArtifactReference();
                 await registry.ShowManifestAsync(img, raw);
             });
 
             this.Add(showCmd);
+            this.Add(new ConfigCommand());
         }
     }
 }

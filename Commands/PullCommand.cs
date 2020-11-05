@@ -20,8 +20,7 @@ namespace AzureContainerRegistry.CLI.Commands
             this.Handler = CommandHandler.Create<string, string, IHost>(async (reference, output, host) =>
            {
                var contentStore = host.Services.GetRequiredService<ContentStore>();
-               var registry = host.Services.GetRequiredService<Registry>();
-               await contentStore.PullAsync(reference.ToImageReference(registry.LoginUrl), output);
+               await contentStore.PullAsync(reference.ToArtifactReference(), output);
            });
         }
     }

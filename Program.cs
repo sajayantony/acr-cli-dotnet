@@ -49,12 +49,12 @@ namespace AzureContainerRegistry.CLI
                         var password = context.ParseResult.ValueForOption<string>("passworld");
                         password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ?
                                         Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
-
-                        services.AddSingleton<Registry>(new Registry(registry, username, password));
+                        
+                        services.AddSingleton<CredentialsProvider>(
+                                _ =>  new CredentialsProvider(registry, username, password));
                         services.AddSingleton(typeof(RegistryService));
                         services.AddSingleton(typeof(ContentStore));
                         services.AddSingleton<System.IO.TextWriter>(System.Console.Out);
-
                     });
                 })
             .UseDefaults()

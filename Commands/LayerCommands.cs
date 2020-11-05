@@ -21,9 +21,8 @@ namespace AzureContainerRegistry.CLI.Commands
             pullCmd.Handler = CommandHandler.Create<string, string, IHost>(async (reference, output, host) =>
            {
                var contentStore = host.Services.GetRequiredService<ContentStore>();
-               var registry = host.Services.GetRequiredService<Registry>();
                await contentStore.DownloadLayerAsync(
-                   reference.ToImageReference(registry.LoginUrl),
+                   reference.ToArtifactReference(),
                    filename: output);
            });
 

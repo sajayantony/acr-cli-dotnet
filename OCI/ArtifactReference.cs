@@ -1,6 +1,6 @@
 namespace OCI
 {
-    public class ImageReference
+    public class ArtifactReference
     {
         public string Tag { get; set; }
 

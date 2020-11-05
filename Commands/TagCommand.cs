@@ -52,8 +52,8 @@ namespace AzureContainerRegistry.CLI.Commands
 
         async Task AddTagAsync(RegistryService reg, string srcRef, string destRef)
         {
-            var src = srcRef.ToImageReference(reg.LoginServer);
-            var dest = destRef.ToImageReference(reg.LoginServer);
+            var src = srcRef.ToArtifactReference();
+            var dest = destRef.ToArtifactReference();
             await reg.AddTagAsync(src, dest);
         }
 
