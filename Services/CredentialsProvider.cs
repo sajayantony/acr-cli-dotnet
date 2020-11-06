@@ -32,7 +32,7 @@ namespace AzureContainerRegistry.CLI.Services
         public CredentialsProvider(string registry, string username, string password)
         {
             _creds = new ContainerRegistryCredentials(
-                   ContainerRegistryCredentials.LoginMode.TokenAuth,
+                   ContainerRegistryCredentials.LoginMode.Basic,
                    registry,
                    username,
                    password);

@@ -9,6 +9,7 @@ namespace AzureContainerRegistry.CLI
     {
         public static ArtifactReference ToArtifactReference(this string reference)
         {
+            System.Console.WriteLine(reference);
             var img = new ArtifactReference();
 
             //Check see if registry hostname is provided. 
@@ -21,19 +22,19 @@ namespace AzureContainerRegistry.CLI
 
             var hostPrefix = img.HostName + "/";
             //Trim the registry to get repository and tag. 
-            reference = reference.Substring(hostPrefix.Length);
-            if (reference.Contains("@sha256"))
+            var refPart = reference.Substring(hostPrefix.Length);
+            if (refPart.Contains("@sha256"))
             {
-                var parts = reference.Split('@');
+                var parts = refPart.Split('@');
                 if (parts.Length > 1)
                 {
                     img.Repository = parts[0];
                     img.Digest = parts[1];
                 }
             }
-            else if (reference.Contains(':'))
+            else if (refPart.Contains(':'))
             {
-                var parts = reference.Split(':');
+                var parts = refPart.Split(':');
                 if (parts.Length > 1)
                 {
                     img.Repository = parts[0];

@@ -18,48 +18,64 @@ namespace AzureContainerRegistry.CLI
     {
         static async Task Main(string[] args)
         {
-            var cmd = new AcrRootCommand();
-            var builder = new CommandLineBuilder(new AcrRootCommand());
+            try
+            {
 
-            await builder.UseHost(_ => Host.CreateDefaultBuilder(),
-                host =>
-                {
-                    InvocationContext context = (InvocationContext)host.Properties[typeof(InvocationContext)];
+                var cmd = new AcrRootCommand();
+                var builder = new CommandLineBuilder(new AcrRootCommand());
 
-                    if (context.ParseResult.ValueForOption<bool>("verbose"))
+                await builder.UseHost(_ => Host.CreateDefaultBuilder(),
+                    host =>
                     {
-                        host.ConfigureLogging(logging =>
+                        InvocationContext context = (InvocationContext)host.Properties[typeof(InvocationContext)];
+
+                        if (context.ParseResult.ValueForOption<bool>("verbose"))
                         {
-                            logging.ClearProviders();
-                            logging.AddConsole();
-                        });
-                    }
-                    else
-                    {
-                        host.ConfigureLogging(logging =>
+                            host.ConfigureLogging(logging =>
+                            {
+                                logging.ClearProviders();
+                                logging.AddConsole();
+                            });
+                        }
+                        else
                         {
-                            logging.ClearProviders();
-                        });
-                    }
+                            host.ConfigureLogging(logging =>
+                            {
+                                logging.ClearProviders();
+                            });
+                        }
 
-                    host.ConfigureServices(services =>
-                    {
-                        var registry = context.ParseResult.ValueForOption<string>("registry");
-                        var username = context.ParseResult.ValueForOption<string>("username");
-                        var password = context.ParseResult.ValueForOption<string>("passworld");
-                        password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ?
-                                        Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
-                        
-                        services.AddSingleton<CredentialsProvider>(
-                                _ =>  new CredentialsProvider(registry, username, password));
-                        services.AddSingleton(typeof(RegistryService));
-                        services.AddSingleton(typeof(ContentStore));
-                        services.AddSingleton<System.IO.TextWriter>(System.Console.Out);
-                    });
-                })
-            .UseDefaults()
-            .Build()
-            .InvokeAsync(args);
+                        host.ConfigureServices(services =>
+                        {
+                            var registry = context.ParseResult.ValueForOption<string>("registry");
+                            var username = context.ParseResult.ValueForOption<string>("username");
+                            var password = context.ParseResult.ValueForOption<string>("passworld");
+                            password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ?
+                                            Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
+
+                            services.AddSingleton<CredentialsProvider>(
+                                    _ => new CredentialsProvider(registry, username, password));
+                            services.AddSingleton(typeof(RegistryService));
+                            services.AddSingleton(typeof(ContentStore));
+                            services.AddSingleton<System.IO.TextWriter>(System.Console.Out);
+                        });
+                    })
+                .UseVersionOption()
+                .UseHelp()
+                .UseEnvironmentVariableDirective()
+                .UseDebugDirective()
+                .UseSuggestDirective()
+                .RegisterWithDotnetSuggest()
+                .UseTypoCorrections()
+                .UseParseErrorReporting()
+                .CancelOnProcessTermination()
+                .Build()
+                .InvokeAsync(args);
+            }
+            catch(Exception ex)
+            {
+                System.Console.WriteLine("Error: " + ex.Message);
+            }
         }
 
         public static IHostBuilder GetHost(InvocationContext invocationContext)

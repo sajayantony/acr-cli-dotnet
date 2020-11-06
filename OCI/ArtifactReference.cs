@@ -1,3 +1,5 @@
+using System;
+
 namespace OCI
 {
     public class ArtifactReference
@@ -9,5 +11,17 @@ namespace OCI
         public string Repository { get; set; }
 
         public string HostName { get; set; }
+
+        public override string ToString()
+        {
+            if (!String.IsNullOrEmpty(this.Tag))
+            {
+                return $"{this.HostName}/{this.Repository}:{this.Tag}";
+            }
+            else
+            {
+                return $"{this.HostName}/{this.Repository}:{this.Digest}";
+            }
+        }
     }
 }

@@ -89,6 +89,36 @@ namespace AzureContainerRegistry.CLI.Services
             _output.Write($"No config present in manifest of type {manifestWithAttributes.Item2.MediaType}");
         }
 
+        public async Task AddTagAsync(ArtifactReference reference, ArtifactReference dest)
+        {
+            _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
+
+            if (!String.IsNullOrEmpty(reference.Tag))
+            {
+                var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
+
+                _logger.LogInformation($"Tag digest: {tagAttrsResponse.Attributes.Digest}");
+
+                var manifestAttrsResponse = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
+
+                _logger.LogInformation($"MediaType: {manifestAttrsResponse.Attributes.MediaType}");
+                var manifestResponse = await _runtimeClient.Manifests.GetAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
+
+
+                JsonSerializer serializer = new JsonSerializer();
+                serializer.Formatting = Formatting.Indented;
+                serializer.Serialize(_output, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
+
+                _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
+                await _runtimeClient.Manifests.CreateAsync(dest.Repository, dest.Tag, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
+            }
+        }
+
+        public async Task<Stream> GetBlobAsync(string repo, string digest)
+        {
+            return await _runtimeClient.Blob.GetAsync(repo, digest);
+        }
+
         async Task WriteBlobAsync(string repo, string digest, long? size, bool raw)
         {
             // Ideally validate during download
@@ -115,35 +145,6 @@ namespace AzureContainerRegistry.CLI.Services
             }
         }
 
-        public async Task AddTagAsync(ArtifactReference reference, ArtifactReference dest)
-        {
-            _logger.LogInformation($"Fetching manifest {reference.HostName}/{reference.Repository}:{reference.Tag}");
-
-            if (!String.IsNullOrEmpty(reference.Tag))
-            {
-                var tagAttrsResponse = await _runtimeClient.Tag.GetAttributesAsync(reference.Repository, reference.Tag);
-
-                _logger.LogInformation($"Tag digest: {tagAttrsResponse.Attributes.Digest}");
-
-                var manifestAttrsResponse = await _runtimeClient.Manifests.GetAttributesAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
-
-                _logger.LogInformation($"MediaType: {manifestAttrsResponse.Attributes.MediaType}");
-                var manifestResponse = await _runtimeClient.Manifests.GetAsync(reference.Repository, tagAttrsResponse.Attributes.Digest);
-
-
-                JsonSerializer serializer = new JsonSerializer();
-                serializer.Formatting = Formatting.Indented;
-                serializer.Serialize(_output, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
-
-                _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
-                await _runtimeClient.Manifests.CreateAsync("hello-world", "test-put", manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
-            }
-        }
-
-        public async Task<Stream> GetBlobAsync(string repo, string digest)
-        {
-            return await _runtimeClient.Blob.GetAsync(repo, digest);
-        }
 
         public async Task<TagList> ListTagsAsync(string repo)
         {

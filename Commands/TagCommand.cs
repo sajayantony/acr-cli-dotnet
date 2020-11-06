@@ -1,5 +1,6 @@
 using System;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 using AzureContainerRegistry.CLI.Services;
@@ -18,13 +19,31 @@ namespace AzureContainerRegistry.CLI.Commands
         {
             var addCmd = new Command("add");
             addCmd.AddArgument(new Argument<string>("source", "Source image reference myregistry.azurecr.io/repos:source"));
-            addCmd.AddArgument(new Argument<string>("target", "Target tag which will be placed in the same repository."));
-            addCmd.Handler = CommandHandler.Create<string, string, IHost>(async (source, target, host) =>
+
+
+            var tagArg = new Argument<string>("tag", "Target tag which will be placed in the same repository.");
+
+            tagArg.AddValidator(r =>
+                {
+                    
+                    var value = r.GetValueOrDefault<string>();
+                    Console.WriteLine("Validating arg " + value);
+                    if (!OCI.RegularExpressions.Regexp.IsValidTag(value))
+                    {
+                        return $"Tag specified is invalid: {value}";
+                    }
+                    return null;
+                });
+
+            addCmd.AddArgument(tagArg);
+
+
+            addCmd.Handler = CommandHandler.Create<string, string, IHost>(async (source, tag, host) =>
              {
                  var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
                  _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
                  var registry = host.Services.GetRequiredService<RegistryService>();
-                 await AddTagAsync(registry, source, target);
+                 await AddTagAsync(registry, source, tag);
              });
 
             var deleteCmd = new Command("delete", "Removes the tag and does not delete the image.");
@@ -50,10 +69,10 @@ namespace AzureContainerRegistry.CLI.Commands
             this.Add(deleteCmd);
         }
 
-        async Task AddTagAsync(RegistryService reg, string srcRef, string destRef)
+        async Task AddTagAsync(RegistryService reg, string srcRef, string tag)
         {
             var src = srcRef.ToArtifactReference();
-            var dest = destRef.ToArtifactReference();
+            var dest = $"{src.HostName}/{src.Repository}:{tag}".ToArtifactReference();
             await reg.AddTagAsync(src, dest);
         }
 
