@@ -21,9 +21,7 @@ namespace OCI.RegularExpressions
 
         public static bool IsValidTag(string tagPart)
         {
-            var validTag =  _tagExp.Match(tagPart);
-            System.Console.WriteLine(validTag.Value);
-            return false;
+            return _tagExp.IsMatch(tagPart);            
         }
 
         public static bool IsValidDigest(string digestPart)
