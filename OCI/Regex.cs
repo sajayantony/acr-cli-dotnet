@@ -5,7 +5,7 @@ namespace OCI.RegularExpressions
     // Refere here for base implementation https://github.com/docker/distribution/blob/master/reference/regexp.go
     public static class Regexp
     {
-        const string TagPattern = @"[\w][\w.-]{0,127}$";
+        const string TagPattern = @"^[\w][\w.-]{0,127}$";
 
         static Regex _tagExp = new System.Text.RegularExpressions.Regex(TagPattern, RegexOptions.Compiled);
 
