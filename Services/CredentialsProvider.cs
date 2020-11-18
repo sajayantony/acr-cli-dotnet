@@ -1,3 +1,4 @@
+#nullable enable
 
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -7,26 +8,29 @@ using Microsoft.Rest;
 using OCI;
 using AzureContainerRegistry.CLI;
 using Microsoft.Azure.ContainerRegistry;
+using System;
 
 namespace AzureContainerRegistry.CLI.Services
 {
     class CredentialsProvider
     {
-        private ServiceClientCredentials _creds;
+        private ServiceClientCredentials? _creds;
 
-        public ServiceClientCredentials Credentials => _creds;        
-        
-        public void TryInitialize(string reference)
+        public ServiceClientCredentials? Credentials => _creds;
+
+        public bool TryInitialize(string? reference)
         {
-            if (_creds == null)
+            if (_creds == null && !String.IsNullOrEmpty(reference))
             {
                 _creds = new AnonymousToken(reference.ToArtifactReference());
+                return true;
             }
+
+            return false;
         }
 
         public CredentialsProvider()
         {
-
         }
 
         public CredentialsProvider(string registry, string username, string password)
@@ -52,7 +56,7 @@ namespace AzureContainerRegistry.CLI.Services
                 base.InitializeServiceClient(client);
             }
 
-            private async Task<string> GetAccessToken()
+            private async Task<string?> GetAccessToken()
             {
                 HttpClient c = new HttpClient();
 
@@ -67,7 +71,7 @@ namespace AzureContainerRegistry.CLI.Services
 
                 //Console.WriteLine(strResponse);
                 var jToken = System.Text.Json.JsonSerializer.Deserialize<AuthToken>(strResponse);
-                return jToken.access_token;
+                return jToken?.access_token;
             }
 
             public override Task ProcessHttpRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -79,7 +83,7 @@ namespace AzureContainerRegistry.CLI.Services
 
             class AuthToken
             {
-                public string access_token { get; set; }
+                public string? access_token { get; set; }
             }
         }
     }

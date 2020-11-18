@@ -9,7 +9,7 @@ namespace AzureContainerRegistry.CLI.Commands
 {
     class PullCommand : Command
     {
-        public PullCommand() : base("pull", "Pull Artifact")
+        public PullCommand() : base("pull", "Pull an artifact")
         {
             this.AddArgument(new Argument<string>("reference"));
             this.Add(new Option<string>(

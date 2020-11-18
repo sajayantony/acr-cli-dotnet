@@ -5,11 +5,10 @@ using OCI;
 
 namespace AzureContainerRegistry.CLI
 {
-    static class Extensions
+    static class ArtifactExtensions
     {
         public static ArtifactReference ToArtifactReference(this string reference)
         {
-            System.Console.WriteLine(reference);
             var img = new ArtifactReference();
 
             //Check see if registry hostname is provided. 

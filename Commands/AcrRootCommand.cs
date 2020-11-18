@@ -17,21 +17,21 @@ namespace AzureContainerRegistry.CLI.Commands
             this.AddGlobalOption(
                 new Option<string>(
                     "--registry",
-                    getDefaultValue: () => Environment.GetEnvironmentVariable("REGISTRY_LOGIN"),
+                    getDefaultValue: () => Environment.GetEnvironmentVariable("REGISTRY_LOGIN")?? String.Empty,
                     "Registry Login Server")
             );
 
             this.AddGlobalOption(
                  new Option<string>(
                        "--username",
-                       getDefaultValue: () => Environment.GetEnvironmentVariable("REGISTRY_USERNAME"),
+                       getDefaultValue: () => Environment.GetEnvironmentVariable("REGISTRY_USERNAME") ?? String.Empty,
                        "Registry Username")
             );
 
             this.AddGlobalOption(
                  new Option<string>(
                        "--password",
-                       getDefaultValue: () => !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ? DEFAULT_PASSWORD : null,
+                       getDefaultValue: () => !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ? DEFAULT_PASSWORD : string.Empty ,
                        "Registry Login Server")
             );
 
@@ -47,6 +47,7 @@ namespace AzureContainerRegistry.CLI.Commands
             this.AddCommand(new TagCommand());
             this.AddCommand(new PullCommand());
             this.AddCommand(new LayerCommand());
+            this.AddCommand(new PushCommand());
         }
     }
 }

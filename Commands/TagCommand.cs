@@ -13,8 +13,6 @@ namespace AzureContainerRegistry.CLI.Commands
 {
     class TagCommand : Command
     {
-        private ILogger _logger;
-
         public TagCommand() : base("tag", "Tag operations")
         {
             var addCmd = new Command("add");
@@ -25,13 +23,16 @@ namespace AzureContainerRegistry.CLI.Commands
 
             tagArg.AddValidator(r =>
                 {
-                    
+
                     var value = r.GetValueOrDefault<string>();
-                    Console.WriteLine("Validating arg " + value);
-                    if (!OCI.RegularExpressions.Regexp.IsValidTag(value))
+                    if (value != null)
                     {
-                        return $"Tag specified is invalid: {value}";
+                        if (!OCI.RegularExpressions.Regexp.IsValidTag(value))
+                        {
+                            return $"Tag specified is invalid: {value}";
+                        }
                     }
+                    
                     return null;
                 });
 
@@ -40,8 +41,6 @@ namespace AzureContainerRegistry.CLI.Commands
 
             addCmd.Handler = CommandHandler.Create<string, string, IHost>(async (source, tag, host) =>
              {
-                 var loggerFactory = host.Services.GetRequiredService<ILoggerFactory>();
-                 _logger = loggerFactory.CreateLogger(typeof(ManifestCommand));
                  var registry = host.Services.GetRequiredService<RegistryService>();
                  await AddTagAsync(registry, source, tag);
              });

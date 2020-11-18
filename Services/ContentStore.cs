@@ -11,6 +11,7 @@ using AzureContainerRegistry.CLI.Services;
 using Microsoft.Extensions.Logging;
 using Microsoft.Azure.ContainerRegistry.Models;
 using Newtonsoft.Json;
+using System.Collections.Generic;
 
 namespace AzureContainerRegistry.CLI
 {
@@ -59,13 +60,83 @@ namespace AzureContainerRegistry.CLI
             }
         }
 
+        internal async Task<bool> PushAsync(ArtifactReference reference, string dir)
+        {
+            if (!Directory.Exists(dir))
+            {
+                throw new Exception($"{dir} not found");
+            }
+
+            var manifestFilePath = Path.Join(dir, "manifest.json");
+            var configFilePath = Path.Join(dir, "config.json");
+
+            if (!File.Exists(manifestFilePath))
+            {
+                _logger.LogInformation($"File not found: {manifestFilePath}");
+                return false;
+            }
+
+            _logger.LogInformation($"Reading {manifestFilePath}");
+            V2Manifest? manifest = null;
+            using (var fs = File.OpenRead(manifestFilePath))
+            using (var txt = new StreamReader(fs))
+            {
+                JsonSerializer serializer = new JsonSerializer();
+                manifest = serializer.Deserialize(txt, typeof(V2Manifest)) as V2Manifest;
+            }
+
+            if (manifest == null)
+            {
+                _logger.LogWarning($"Malformed manifest {manifestFilePath}");
+                return false;
+            }
+
+            if (!File.Exists(configFilePath!))
+            {
+                _logger.LogInformation($"File not found: {configFilePath}");
+                return false;
+            }
+
+
+            _logger.LogInformation($"Reading {configFilePath}");
+            var configFile = new FileInfo(configFilePath).ToDescriptor();
+            using (var fs = File.OpenRead(configFilePath))
+            {
+                _logger.LogInformation($"Uploading Config Blob: {configFilePath} {configFile.Digest}");
+                await _registry.UploadBlobAsync(reference, configFile.Digest, fs);
+            }
+
+            // Uplaod each layer.
+            foreach (var file in Directory.GetFiles(dir))
+            {
+                _logger.LogInformation($"Uploading Layer {file}");
+                var descriptor = new FileInfo(file).ToDescriptor();
+                using (var fs = File.OpenRead(file))
+                {
+                    await _registry.UploadBlobAsync(reference, descriptor.Digest, fs);
+                }
+            }
+
+            //Put manifest
+            _logger.LogInformation("Uploading Manifest");
+            await _registry.PutManifestAsync(reference, manifest);
+
+            return true;
+        }
+
         public async Task PullAsync(ArtifactReference reference, string outputDir)
         {
             var manifestWithAttributes = await _registry.GetManifestAsync(reference);
             var manifest = manifestWithAttributes.Item1;
-            var digest = manifestWithAttributes.Item2.Digest;
+            var digest = manifestWithAttributes.Item2?.Digest ?? string.Empty;
 
             _logger.LogInformation($"Downloading layers for {reference.HostName}/{reference.Repository}@{digest} to {outputDir}");
+
+
+            if (manifestWithAttributes.Item2 == null)
+            {
+                throw new ArgumentException("manifestAttributes");
+            }
 
             await DownloadContentsAsync(
                     reference,
@@ -94,8 +165,12 @@ namespace AzureContainerRegistry.CLI
             var configFile = System.IO.Path.Combine(outputDir, "config.json");
             _logger.LogInformation($"Writing config {configFile}");
             var config = manifest.Config(attributes.MediaType);
-            await DownloadLayerAsync(reference.Repository, config.Digest, configFile);
-            _output.WriteLine($"Downloaded config.json : {config.Digest}");
+            if (config != null)
+            {
+                await DownloadLayerAsync(reference.Repository, config.Digest, configFile);
+                _output.WriteLine($"Downloaded config.json : {config.Digest}");
+            }
+
 
             //Write Layers        
             var layers = manifest.Layers(attributes.MediaType);
@@ -172,7 +247,7 @@ namespace AzureContainerRegistry.CLI
                 base.InitializeServiceClient(client);
             }
 
-            private async Task<string> GetAccessToken()
+            private async Task<string?> GetAccessToken()
             {
                 HttpClient c = new HttpClient();
 
@@ -187,7 +262,7 @@ namespace AzureContainerRegistry.CLI
 
                 //Console.WriteLine(strResponse);
                 var jToken = System.Text.Json.JsonSerializer.Deserialize<AuthToken>(strResponse);
-                return jToken.access_token;
+                return jToken?.access_token;
             }
 
             public override Task ProcessHttpRequestAsync(HttpRequestMessage request, CancellationToken cancellationToken)
@@ -200,7 +275,7 @@ namespace AzureContainerRegistry.CLI
 
         class AuthToken
         {
-            public string access_token { get; set; }
+            public string? access_token { get; set; }
         }
 
     }

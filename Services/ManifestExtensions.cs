@@ -8,7 +8,7 @@ namespace AzureContainerRegistry.CLI.Services
     {
         public static Manifest Convert(this ManifestWrapper manifestResponse, string mediaType)
         {
-            Manifest manifest = null;
+            Manifest? manifest = null;
             switch (mediaType)
             {
                 case ManifestMediaTypes.V2Manifest:
@@ -28,7 +28,12 @@ namespace AzureContainerRegistry.CLI.Services
                     break;
             }
 
-            return manifest;
+            if(manifest != null)
+            {
+                return manifest;
+            }
+
+            throw new System.Exception($"Invlid media type {mediaType}");
         }
 
         public static IList<Descriptor> Layers(this Manifest manifest, string mediaType)
@@ -44,7 +49,7 @@ namespace AzureContainerRegistry.CLI.Services
             return new List<Descriptor>();
         }
 
-        public static Descriptor Config(this Manifest manifest, string mediaType)
+        public static Descriptor? Config(this Manifest? manifest, string mediaType)
         {
             switch (manifest)
             {

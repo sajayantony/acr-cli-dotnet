@@ -50,11 +50,24 @@ namespace AzureContainerRegistry.CLI
                             var registry = context.ParseResult.ValueForOption<string>("registry");
                             var username = context.ParseResult.ValueForOption<string>("username");
                             var password = context.ParseResult.ValueForOption<string>("passworld");
+                            var reference = context.ParseResult.ValueForOption<string>("registry");
                             password = !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("REGISTRY_PASSWORD")) ?
                                             Environment.GetEnvironmentVariable("REGISTRY_PASSWORD") : password;
 
-                            services.AddSingleton<CredentialsProvider>(
-                                    _ => new CredentialsProvider(registry, username, password));
+                            if (!String.IsNullOrEmpty(username) &&
+                                !string.IsNullOrEmpty(password) &&
+                                !string.IsNullOrEmpty(registry))
+                            {
+                                services.AddSingleton<CredentialsProvider>(
+                                        _ => new CredentialsProvider(registry, username, password));
+                            }
+                            else
+                            {
+                                var creds = new CredentialsProvider();
+                                creds.TryInitialize(reference);
+                                services.AddSingleton<CredentialsProvider>( _ = creds);
+                            }
+
                             services.AddSingleton(typeof(RegistryService));
                             services.AddSingleton(typeof(ContentStore));
                             services.AddSingleton<System.IO.TextWriter>(System.Console.Out);
@@ -69,19 +82,14 @@ namespace AzureContainerRegistry.CLI
                 .UseTypoCorrections()
                 .UseParseErrorReporting()
                 .CancelOnProcessTermination()
+                //.UseExceptionHandler()
                 .Build()
                 .InvokeAsync(args);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 System.Console.WriteLine("Error: " + ex.Message);
             }
-        }
-
-        public static IHostBuilder GetHost(InvocationContext invocationContext)
-        {
-            var modelBinder = new ModelBinder<IHostBuilder>();
-            return (IHostBuilder)modelBinder.CreateInstance(invocationContext.BindingContext);
         }
     }
 }

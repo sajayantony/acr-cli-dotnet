@@ -17,8 +17,6 @@ namespace OCI.RegularExpressions
 
         static Regex _domainExp = new Regex(DomainPattern, RegexOptions.Compiled);
 
-
-
         public static bool IsValidTag(string tagPart)
         {
             return _tagExp.IsMatch(tagPart);            

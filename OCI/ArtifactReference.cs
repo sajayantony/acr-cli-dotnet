@@ -2,6 +2,8 @@ using System;
 
 namespace OCI
 {
+
+#nullable disable
     public class ArtifactReference
     {
         public string Tag { get; set; }

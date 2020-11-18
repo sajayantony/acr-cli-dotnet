@@ -43,9 +43,10 @@ namespace AzureContainerRegistry.CLI.Services
             serializer.Serialize(_output, manifestWithAttributes.Item1);
         }
 
-        public async Task<(Manifest, ManifestAttributesBase)> GetManifestAsync(ArtifactReference reference)
+        public async Task<(Manifest, ManifestAttributesBase?)> GetManifestAsync(ArtifactReference reference)
         {
-            ManifestAttributes manifestAttrResp = null;
+            ManifestAttributes? manifestAttrResp = null;
+            string mediaType = OCI.ManifestMediaTypes.V2Manifest;
             var digest = reference.Digest;
 
             try
@@ -68,25 +69,39 @@ namespace AzureContainerRegistry.CLI.Services
                 _logger.LogError(ex, "Error when getting Attributes. Might be not an Azure Container Registry or might not have access to metadata API.");
             }
 
-            var mediaType = manifestAttrResp.Attributes.MediaType;
-            digest = manifestAttrResp.Attributes.Digest;
+            if (manifestAttrResp != null)
+            {
+                mediaType = manifestAttrResp?.Attributes.MediaType ?? OCI.ManifestMediaTypes.V2Manifest;
+                digest = manifestAttrResp?.Attributes?.Digest ?? string.Empty;
+            }
+
 
             var manifest = await _runtimeClient.Manifests.GetAsync(reference.Repository, digest, mediaType);
-            return (manifest.Convert(mediaType), manifestAttrResp.Attributes);
+            return (manifest.Convert(mediaType), manifestAttrResp?.Attributes);
         }
 
         internal async Task ShowConfigAsync(ArtifactReference img, bool raw)
         {
             var manifestWithAttributes = await GetManifestAsync(img);
             var manifest = manifestWithAttributes.Item1;
-            var config = manifest.Config(manifestWithAttributes.Item2.MediaType);
-            if (config != null)
+
+            var config = manifest.Config(manifestWithAttributes.Item2?.MediaType ?? string.Empty);
+            if (config != null && config.Size.HasValue)
             {
-                await WriteBlobAsync(img.Repository, config.Digest, config.Size, raw);
+                await WriteBlobAsync(img.Repository, config.Digest, config.Size.Value, raw);
                 return;
             }
 
-            _output.Write($"No config present in manifest of type {manifestWithAttributes.Item2.MediaType}");
+            _output.Write($"No config present in manifest");
+        }
+
+        public async Task<bool> UploadBlobAsync(ArtifactReference reference, string digest, Stream blobStream)
+        {
+            var repository = reference.Repository;
+            var uploadInfo = await _runtimeClient.Blob.StartUploadAsync(repository);
+            var uploadedLayer = await _runtimeClient.Blob.UploadAsync(blobStream, uploadInfo.Location);
+            var uploadedLayerEnd = await _runtimeClient.Blob.EndUploadAsync(digest, uploadedLayer.Location);
+            return uploadedLayerEnd.DockerContentDigest == digest;
         }
 
         public async Task AddTagAsync(ArtifactReference reference, ArtifactReference dest)
@@ -112,6 +127,15 @@ namespace AzureContainerRegistry.CLI.Services
                 _logger.LogInformation($"Putting Tag with Manifest:  {dest.HostName}/{dest.Repository}:{dest.Tag} {manifestAttrsResponse.Attributes.Digest}");
                 await _runtimeClient.Manifests.CreateAsync(dest.Repository, dest.Tag, manifestResponse.Convert(manifestAttrsResponse.Attributes.MediaType));
             }
+        }
+
+        public async Task PutManifestAsync(ArtifactReference reference, Manifest manifest)
+        {
+            _logger.LogInformation($"Writing manifest {manifest.GetType().Name} to {reference}");
+            var resp = await _runtimeClient.Manifests.CreateAsync(
+                reference.Repository,
+                reference.Tag,
+                manifest);
         }
 
         public async Task<Stream> GetBlobAsync(string repo, string digest)
@@ -141,7 +165,7 @@ namespace AzureContainerRegistry.CLI.Services
             }
             else
             {
-                _logger.LogCritical($"Size of config {size.Value} exceed max possible value of 10MB");
+                _logger.LogCritical($"Size of config {size} exceed max possible value of 10MB");
             }
         }
 
