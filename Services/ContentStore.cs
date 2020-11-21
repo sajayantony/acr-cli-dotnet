@@ -13,13 +13,13 @@ using Microsoft.Azure.ContainerRegistry.Models;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 
-namespace AzureContainerRegistry.CLI
+namespace AzureContainerRegistry.CLI.Services
 {
     class ContentStore
     {
-        private ILogger _logger;
-        private TextWriter _output;
-        private RegistryService _registry;
+        private readonly ILogger _logger;
+        private readonly TextWriter _output;
+        private readonly RegistryService _registry;
 
         public ContentStore(RegistryService registry, ILoggerFactory loggerFactory, TextWriter output)
         {
@@ -122,6 +122,38 @@ namespace AzureContainerRegistry.CLI
             await _registry.PutManifestAsync(reference, manifest);
 
             return true;
+        }
+
+
+        internal async Task<bool> PushAsync(ArtifactReference reference, string configMediaType, string filename)
+        {
+            Descriptor config = new Descriptor()
+            {
+                MediaType = !string.IsNullOrEmpty(configMediaType)? configMediaType : "application/vnd.docker.container.image.v1+json"
+            };
+
+            var configStream = config.ToStream();
+            config.Size = configStream.Length;
+            config.Digest = configStream.ComputeHash();
+            _logger.LogInformation($"Uploading Config {config.Digest}");
+            await _registry.UploadBlobAsync(reference, config.Digest, configStream);
+
+            _logger.LogInformation($"Starting Upload {filename}");
+            var blobDescriptor = new FileInfo(filename).ToDescriptor();
+            using (var fs = File.OpenRead(filename))
+            {
+                _logger.LogInformation($"Uploading {filename} with digest {blobDescriptor.Digest}");
+                await _registry.UploadBlobAsync(reference, blobDescriptor.Digest, fs);
+            }
+
+            V2Manifest manifest = new V2Manifest(2, config: config);
+            manifest.Layers = new List<Descriptor>();
+            manifest.Layers.Add(blobDescriptor);
+            manifest.Config = config;
+            //manifest.MediaType = ManifestMediaTypes.OCIManifest;
+            await _registry.PutManifestAsync(reference, manifest);
+            
+            return false;
         }
 
         public async Task PullAsync(ArtifactReference reference, string outputDir)

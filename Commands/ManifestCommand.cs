@@ -11,7 +11,7 @@ namespace AzureContainerRegistry.CLI.Commands
     {
         public ManifestCommand() : base("manifest", "Manifest operations")
         {
-            var showCmd = new Command("show");
+            var showCmd = new Command("show", "Show the manifest for the reference");
             showCmd.AddOption(new Option<bool>(
                 aliases: new string[] { "-raw", "-r" },
                 getDefaultValue: () => false,

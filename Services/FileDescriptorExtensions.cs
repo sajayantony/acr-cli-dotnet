@@ -5,19 +5,21 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Azure.ContainerRegistry.Models;
 
-namespace OCI
+namespace AzureContainerRegistry.CLI.Services
 {
-    static class FileDescriptorExtensions 
+    static class FileDescriptorExtensions
     {
-        public static void Add(this V2Manifest manifest, FileInfo fileInfo) => manifest.Layers.Add(fileInfo.ToDescriptor());
-
         public static Descriptor ToDescriptor(this FileInfo fInfo)
         {
-            var descriptor = new Descriptor();
-            
-            descriptor.Size = fInfo.Length;
-            descriptor.Digest = fInfo.ComputeHash();            
-            return descriptor;
+
+            //Default media type for file is "application/vnd.docker.image.rootfs.diff.tar.gzip"
+            return new Descriptor()
+            {
+                Size = fInfo.Length,
+                Digest = fInfo.ComputeHash(), 
+                MediaType = "application/vnd.docker.image.rootfs.diff.tar.gzip"
+
+            };
         }
 
         static string ComputeHash(this FileInfo fInfo)
@@ -27,19 +29,11 @@ namespace OCI
                 // Compute and print the hash values for each file in directory.
                 try
                 {
-                    FileStream fileStream = fInfo.OpenRead();
-                    fileStream.Position = 0;
-                    
-                    // Compute the hash of the fileStream.
-                    byte[] hashValue = mySHA256.ComputeHash(fileStream);
-                    
-                    // Write the name and hash value of the file to the console.
-                    Console.Write($"{fInfo.Name}: ");
-                    //PrintByteArray(hashValue);
-                    fileStream.Close();
-
-                     //return "sha256:" + BitConverter.ToString(hashValue);
-                     return "sha256:" + PrintByteArray(hashValue);
+                    using (FileStream fileStream = fInfo.OpenRead())
+                    {
+                        fileStream.Position = 0;
+                        return fileStream.ComputeHash();
+                    }
                 }
                 catch (IOException e)
                 {
@@ -52,18 +46,6 @@ namespace OCI
                     throw;
                 }
             }
-        }
-
-        // Display the byte array in a readable format.
-        public static string PrintByteArray(byte[] array)
-        {
-            var builder = new StringBuilder();
-            for (int i = 0; i < array.Length; i++)
-            {
-                builder.AppendFormat($"{array[i]:X2}");
-                if ((i % 4) == 3) Console.Write(" ");
-            }
-            return builder.ToString().ToLower();
         }
     }
 }

@@ -97,6 +97,7 @@ namespace AzureContainerRegistry.CLI.Services
 
         public async Task<bool> UploadBlobAsync(ArtifactReference reference, string digest, Stream blobStream)
         {
+            _logger.LogInformation($"Uploading Blob {reference} to {digest}");
             var repository = reference.Repository;
             var uploadInfo = await _runtimeClient.Blob.StartUploadAsync(repository);
             var uploadedLayer = await _runtimeClient.Blob.UploadAsync(blobStream, uploadInfo.Location);
@@ -131,6 +132,12 @@ namespace AzureContainerRegistry.CLI.Services
 
         public async Task PutManifestAsync(ArtifactReference reference, Manifest manifest)
         {
+            // https://github.com/Azure/azure-sdk-for-net/issues/17084
+            if(manifest is OCIManifest)
+            {
+                throw new NotImplementedException(); 
+            }
+
             _logger.LogInformation($"Writing manifest {manifest.GetType().Name} to {reference}");
             var resp = await _runtimeClient.Manifests.CreateAsync(
                 reference.Repository,

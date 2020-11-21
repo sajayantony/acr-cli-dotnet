@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
 using Microsoft.Azure.ContainerRegistry.Models;
 using OCI;
 
@@ -60,6 +62,16 @@ namespace AzureContainerRegistry.CLI.Services
             }
 
             return null;
+        }
+
+        public static void Dump(this ManifestWrapper manifest, TextWriter output)
+        {
+            byte[] jsonUtf8Bytes;
+            var options = new JsonSerializerOptions();
+            options.WriteIndented = true;
+            jsonUtf8Bytes = JsonSerializer.SerializeToUtf8Bytes(manifest, options);
+            var s = System.Text.Encoding.UTF8.GetString(jsonUtf8Bytes);
+            output.WriteLine(s);
         }
     }
 }
