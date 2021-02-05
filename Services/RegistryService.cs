@@ -46,7 +46,7 @@ namespace AzureContainerRegistry.CLI.Services
         public async Task<(Manifest, ManifestAttributesBase?)> GetManifestAsync(ArtifactReference reference)
         {
             ManifestAttributes? manifestAttrResp = null;
-            string mediaType = OCI.ManifestMediaTypes.V2Manifest;
+            string mediaType = OCI.ManifestMediaTypes.OCIV1Manifest;
             var digest = reference.Digest;
 
             try
@@ -132,17 +132,13 @@ namespace AzureContainerRegistry.CLI.Services
 
         public async Task PutManifestAsync(ArtifactReference reference, Manifest manifest)
         {
-            // https://github.com/Azure/azure-sdk-for-net/issues/17084
-            if(manifest is OCIManifest)
-            {
-                throw new NotImplementedException(); 
-            }
-
             _logger.LogInformation($"Writing manifest {manifest.GetType().Name} to {reference}");
+            _output.Write($"Pushed {reference}.");
             var resp = await _runtimeClient.Manifests.CreateAsync(
                 reference.Repository,
                 reference.Tag,
                 manifest);
+                
         }
 
         public async Task<Stream> GetBlobAsync(string repo, string digest)

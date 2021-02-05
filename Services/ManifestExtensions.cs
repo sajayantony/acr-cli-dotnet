@@ -22,10 +22,10 @@ namespace AzureContainerRegistry.CLI.Services
                 case ManifestMediaTypes.ManifestList:
                     manifest = (ManifestList)manifestResponse;
                     break;
-                case ManifestMediaTypes.OCIIndex:
+                case ManifestMediaTypes.OCIV1Index:
                     manifest = (OCIIndex)manifestResponse;
                     break;
-                case ManifestMediaTypes.OCIManifest:
+                case ManifestMediaTypes.OCIV1Manifest:
                     manifest = (OCIManifest)manifestResponse;
                     break;
             }

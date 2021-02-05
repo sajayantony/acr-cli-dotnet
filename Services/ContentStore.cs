@@ -124,33 +124,33 @@ namespace AzureContainerRegistry.CLI.Services
             return true;
         }
 
-
         internal async Task<bool> PushAsync(ArtifactReference reference, string configMediaType, string filename)
         {
-            Descriptor config = new Descriptor()
+            var configDescriptor = new Descriptor()
             {
-                MediaType = !string.IsNullOrEmpty(configMediaType)? configMediaType : "application/vnd.docker.container.image.v1+json"
+                MediaType = configMediaType ?? ManifestMediaTypes.UnknownConfigMediaType
             };
 
-            var configStream = config.ToStream();
-            config.Size = configStream.Length;
-            config.Digest = configStream.ComputeHash();
-            _logger.LogInformation($"Uploading Config {config.Digest}");
-            await _registry.UploadBlobAsync(reference, config.Digest, configStream);
+            var configStream = configDescriptor.ToStream();
+            configDescriptor.Size = configStream.Length;
+            configDescriptor.Digest = configStream.ComputeHash();
+            _output.Write($"Uploading Config: {configDescriptor.MediaType} {configDescriptor.Digest}");
+            await _registry.UploadBlobAsync(reference, configDescriptor.Digest, configStream);
 
             _logger.LogInformation($"Starting Upload {filename}");
             var blobDescriptor = new FileInfo(filename).ToDescriptor();
             using (var fs = File.OpenRead(filename))
             {
-                _logger.LogInformation($"Uploading {filename} with digest {blobDescriptor.Digest}");
+                _output.Write($"Uploading {filename} with digest {blobDescriptor.Digest}");
                 await _registry.UploadBlobAsync(reference, blobDescriptor.Digest, fs);
             }
 
-            V2Manifest manifest = new V2Manifest(2, config: config);
+
+            OCIManifest manifest = new OCIManifest(2, config: configDescriptor);
             manifest.Layers = new List<Descriptor>();
             manifest.Layers.Add(blobDescriptor);
-            manifest.Config = config;
-            //manifest.MediaType = ManifestMediaTypes.OCIManifest;
+            manifest.Config = configDescriptor;
+            manifest.MediaType = ManifestMediaTypes.OCIV1Manifest;
             await _registry.PutManifestAsync(reference, manifest);
             
             return false;
@@ -177,7 +177,10 @@ namespace AzureContainerRegistry.CLI.Services
                     outputDir);
         }
 
-        async Task DownloadContentsAsync(ArtifactReference reference, Manifest manifest, ManifestAttributesBase attributes, string outputDir)
+        async Task DownloadContentsAsync(ArtifactReference reference, 
+                Manifest manifest, 
+                ManifestAttributesBase attributes,
+                string outputDir)
         {
             EnsureDirectory(outputDir);
 
